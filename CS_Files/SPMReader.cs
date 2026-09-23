@@ -229,7 +229,7 @@ namespace Cleaning_Records_Sheet
                             string num = "SPOP " +  Utility.SplitString(oXlWorkSheet.Name.Replace("SPOP", ""), " ")[0];
                             if (lstSpops.Contains(num) == false)
                             {
-                                if (num == "SPOP 15")
+                                //if (num == "SPOP 15")
                                     lstSpops.Add(num);
                             }
                         }

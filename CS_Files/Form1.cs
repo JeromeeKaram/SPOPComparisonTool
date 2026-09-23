@@ -265,7 +265,7 @@ namespace SPOPComparisonTool
         private void test()
         {
             var reader = new Cleaning_Records_Sheet.SPMReader();
-            reader.ReadSPM("http://127.0.0.1:8000/PW1000G-77445-19453-00/", "http://127.0.0.1:8001/PW1000G-77445-19453-00/", @"D:\veeru\IHI\Documents\SPM comparison and Cleaning Record_update\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx");
+            reader.ReadSPM("http://127.0.0.1:8000/PW1000G-77445-19453-00/", "http://127.0.0.1:8001/PW1000G-77445-19453-00/", @"D:\CleaningRecord\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx");
 
             var result = reader.GetStep("SPOP 15", "1.D");
             //  EngineManualReader.EMReader emReader = new EngineManualReader.EMReader();
