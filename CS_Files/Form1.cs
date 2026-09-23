@@ -143,56 +143,15 @@ namespace SPOPComparisonTool
 
                         }
 
-
+                        //Integrate Veerendra's Code
+                        
+                        
                         //        //Do the comparison here and create the HighLight Object
                         //        var h = new Highlight();
                         //        h.SheetName = "SPOP15 表";
                         //        h.Row = 18;
                         //        h.Columns = new List<int>() { 7 };
                         //        highlights.Add(h);
-
-                        //for (int row = rowStartsAt + 2; row <= testWorkSheet.Dimension.Rows; row++)
-                        //{
-                        //    var merged = GetMergedCellLastRow(testWorkSheet, row, 2);
-
-                        //    if (merged.merged > -1)
-                        //    {
-                        //        Console.WriteLine("Merged: " + row + " to " + merged);
-
-                        //        // Move to the row immediately after the merged range
-
-                        //        //Retrieve G & H column values
-
-                        //        var rowsCountOfMergedCell = merged.mergedRowCount;
-
-                        //        var ghColumnValues = new List<string>();
-                        //        for (var i = 0; i < rowsCountOfMergedCell; i++)
-                        //        {
-                        //            var mergedGhValue = testWorkSheet.Cells[merged.mergedStartRow + i, 7].Text;
-                        //            ghColumnValues.Add(mergedGhValue);
-                        //        }
-
-                        //        var excelRecord = new ExcelData();
-                        //        excelRecord.GHColumnText = ghColumnValues;
-                        //        excelRecord.SheetName = "";
-                        //        excelRecord.Row = row;
-                        //        excelRecord.BColumnText = testWorkSheet.Cells[merged.mergedStartRow, 2].Text;
-                        //        excelData.Add(excelRecord);
-
-                        //        //Do the comparison here and create the HighLight Object
-                        //        var h = new Highlight();
-                        //        h.SheetName = "SPOP15 表";
-                        //        h.Row = 18;
-                        //        h.Columns = new List<int>() { 7 };
-                        //        highlights.Add(h);
-
-                        //        row = merged.mergedEndRow + 1;
-                        //    }
-                        //    else
-                        //    {
-                        //        Console.WriteLine("Row: " + row);
-                        //    }
-                        //}
                     }
                 }
             }
