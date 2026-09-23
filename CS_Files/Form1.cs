@@ -1,8 +1,8 @@
-﻿using OfficeOpenXml;
+﻿using Cleaning_Records_Sheet;
+using Cleaning_Records_Sheet.About;
+using OfficeOpenXml;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.RefAndLookup;
 using OfficeOpenXml.Style;
-using SVC;
-using SVC.About;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -260,6 +260,24 @@ namespace SPOPComparisonTool
             }
 
             return result;
+        }
+
+        private void test()
+        {
+            var reader = new Cleaning_Records_Sheet.SPMReader();
+            reader.ReadSPM("http://127.0.0.1:8000/PW1000G-77445-19453-00/", "http://127.0.0.1:8001/PW1000G-77445-19453-00/", @"D:\veeru\IHI\Documents\SPM comparison and Cleaning Record_update\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx");
+
+            var result = reader.GetStep("SPOP 15", "1.D");
+            //  EngineManualReader.EMReader emReader = new EngineManualReader.EMReader();
+            // EngineManualReader.ProcedureInfo oproc = DefineProcedure(emReader.Read(@"http://127.0.0.1:8000/PW1000G-77445-19453-00/PWSPM-D-70-21-00-03A-252A-D.html", "new"));
+
+            MessageBox.Show("Test");
+
+        }
+
+        private void btnTest_Click(object sender, EventArgs e)
+        {
+            test();
         }
     }
 }

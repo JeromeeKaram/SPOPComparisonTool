@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace SVC.About
+namespace Cleaning_Records_Sheet.About
 {
     public partial class UIAbout : Form
     {

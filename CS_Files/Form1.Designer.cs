@@ -46,6 +46,7 @@
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.btnTest = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -104,6 +105,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.btnTest);
             this.groupBox1.Controls.Add(this.txtOldRevisionLink);
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Controls.Add(this.txtNewRevisionLink);
@@ -169,14 +171,14 @@
             // helpToolStripMenuItem1
             // 
             this.helpToolStripMenuItem1.Name = "helpToolStripMenuItem1";
-            this.helpToolStripMenuItem1.Size = new System.Drawing.Size(180, 22);
+            this.helpToolStripMenuItem1.Size = new System.Drawing.Size(107, 22);
             this.helpToolStripMenuItem1.Text = "Help";
             this.helpToolStripMenuItem1.Click += new System.EventHandler(this.helpToolStripMenuItem1_Click);
             // 
             // aboutToolStripMenuItem
             // 
             this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
-            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(107, 22);
             this.aboutToolStripMenuItem.Text = "About";
             this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
             // 
@@ -224,6 +226,19 @@
             this.progressBar1.Size = new System.Drawing.Size(706, 20);
             this.progressBar1.TabIndex = 14;
             // 
+            // btnTest
+            // 
+            this.btnTest.BackColor = System.Drawing.SystemColors.Highlight;
+            this.btnTest.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
+            this.btnTest.ForeColor = System.Drawing.Color.White;
+            this.btnTest.Location = new System.Drawing.Point(576, 125);
+            this.btnTest.Name = "btnTest";
+            this.btnTest.Size = new System.Drawing.Size(185, 36);
+            this.btnTest.TabIndex = 20;
+            this.btnTest.Text = "Test";
+            this.btnTest.UseVisualStyleBackColor = false;
+            this.btnTest.Click += new System.EventHandler(this.btnTest_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -268,6 +283,7 @@
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.TextBox txtOldRevisionLink;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Button btnTest;
     }
 }
 

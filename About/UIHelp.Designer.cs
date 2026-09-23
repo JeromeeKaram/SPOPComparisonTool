@@ -1,4 +1,4 @@
-﻿namespace SVC.About
+﻿namespace Cleaning_Records_Sheet.About
 {
     partial class UIHelp
     {
