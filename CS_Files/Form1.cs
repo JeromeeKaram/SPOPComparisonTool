@@ -91,6 +91,8 @@ namespace SPOPComparisonTool
             var changedBulletPoints = new List<Highlight>();
             var excelData = new List<ExcelData>();
 
+            var reader = GetReader();
+
             using (var package = new ExcelPackage(new FileInfo(filePath)))
             {
                 var seen = new HashSet<string>();
@@ -112,6 +114,7 @@ namespace SPOPComparisonTool
 
                 foreach (var name in workSheetNames)
                 {
+                    
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
                     //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
@@ -144,6 +147,7 @@ namespace SPOPComparisonTool
 
                         foreach (var mergedRange in mergedRanges)
                         {
+                            var excelRecord = new ExcelData();
                             var startRow = mergedRange.StartRow;
                             var endRow = mergedRange.EndRow;
 
@@ -153,8 +157,7 @@ namespace SPOPComparisonTool
                             {
                                 manualRequirements.Add(testWorkSheet.Cells[i, 7].Text);
                             }
-
-                            var excelRecord = new ExcelData();
+                            
                             excelRecord.ManualRequirement = manualRequirements;
                             excelRecord.SPOPName = testWorkSheet.Name;
                             excelRecord.Row = startRow;
@@ -164,8 +167,6 @@ namespace SPOPComparisonTool
 
                             excelData.Add(excelRecord);
                         }
-
-                        var reader = GetReader();
 
                         foreach (var record in excelData)
                         {
