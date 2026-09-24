@@ -114,7 +114,7 @@ namespace SPOPComparisonTool
 
                 foreach (var name in workSheetNames)
                 {
-                    
+
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
                     //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
@@ -157,7 +157,7 @@ namespace SPOPComparisonTool
                             {
                                 manualRequirements.Add(testWorkSheet.Cells[i, 7].Text);
                             }
-                            
+
                             excelRecord.ManualRequirement = manualRequirements;
                             excelRecord.SPOPName = testWorkSheet.Name;
                             excelRecord.Row = startRow;
@@ -167,64 +167,62 @@ namespace SPOPComparisonTool
 
                             excelData.Add(excelRecord);
                         }
-
-                        foreach (var record in excelData)
-                        {
-                            //if (record.BulletPoint != "1.D") continue;
-
-                            string withoutJapanese = record.SPOPName.Split(' ')[0];
-                            string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
-
-                            var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
-
-                            if (comparisonResult == null) continue;
-                            var bulletInfo = comparisonResult.m_new.m_sBullet;
-
-                            if (!string.IsNullOrEmpty(bulletInfo))
-                            {
-                                var highLight = new Highlight();
-                                highLight.Row = record.Row;
-                                highLight.SPOPName = record.SPOPName;
-                                highLight.Columns2Highlight = new List<string> { $"{record.BulletPoint}_{record.Row}_2" };
-                                changedBulletPoints.Add(highLight);
-                            }
-
-                            if (comparisonResult != null && comparisonResult.m_eCompareType == CompareType.SAME)
-                            {
-                                continue;
-                            }
-
-                            var newRevisionBulletData = comparisonResult.m_new;
-                            var bulletText = comparisonResult.m_new.m_sText;
-
-                            var highLightManualRequirement = new List<string>();
-
-                            var manualRequirementRow = record.Row;
-
-                            foreach (var item in record.ManualRequirement)
-                            {
-                                var splitItem = item.Contains(":")
-    ? item.Split(':')[1].Trim()
-    : item.Trim();
-                                var variants = GetVariants(splitItem);
-
-                                if (!ManualRequirementExistsInNewRevision(bulletText, variants))
-                                {
-                                    highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
-                                }
-                                manualRequirementRow = manualRequirementRow + 1;
-                            }
-
-                            if (highLightManualRequirement.Any())
-                            {
-                                var highLight = new Highlight();
-                                highLight.Row = record.Row;
-                                highLight.SPOPName = record.SPOPName;
-                                highLight.Columns2Highlight = highLightManualRequirement;
-                                changedManualRequirements.Add(highLight);
-                            }
-                        }
                     }
+                }
+            }
+
+            foreach (var record in excelData)
+            {
+                //if (record.BulletPoint != "1.D") continue;
+
+                string withoutJapanese = record.SPOPName.Split(' ')[0];
+                string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+
+                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
+
+                if (comparisonResult == null) continue;
+                var bulletInfo = comparisonResult.m_new.m_sBullet;
+
+                if (!string.IsNullOrEmpty(bulletInfo))
+                {
+                    var highLight = new Highlight();
+                    highLight.Row = record.Row;
+                    highLight.SPOPName = record.SPOPName;
+                    highLight.Columns2Highlight = new List<string> { $"{record.BulletPoint}_{record.Row}_2" };
+                    changedBulletPoints.Add(highLight);
+                }
+
+                if (comparisonResult != null && comparisonResult.m_eCompareType == CompareType.SAME)
+                {
+                    continue;
+                }
+
+                var newRevisionBulletData = comparisonResult.m_new;
+                var bulletText = comparisonResult.m_new.m_sText;
+
+                var highLightManualRequirement = new List<string>();
+
+                var manualRequirementRow = record.Row;
+
+                foreach (var item in record.ManualRequirement)
+                {
+                    var splitItem = item.Contains(":") ? item.Split(':')[1].Trim() : item.Trim();
+                    var variants = GetVariants(splitItem);
+
+                    if (!ManualRequirementExistsInNewRevision(bulletText, variants))
+                    {
+                        highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
+                    }
+                    manualRequirementRow = manualRequirementRow + 1;
+                }
+
+                if (highLightManualRequirement.Any())
+                {
+                    var highLight = new Highlight();
+                    highLight.Row = record.Row;
+                    highLight.SPOPName = record.SPOPName;
+                    highLight.Columns2Highlight = highLightManualRequirement;
+                    changedManualRequirements.Add(highLight);
                 }
             }
 
