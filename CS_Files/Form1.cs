@@ -80,7 +80,8 @@ namespace SPOPComparisonTool
         private void ReadExcel(string filePath)
         {
             var workSheetNames = new List<string>();
-            var highlights = new List<Highlight>();
+            var changedManualRequirements = new List<Highlight>();
+            var changedBulletPoints = new List<Highlight>();
             var excelData = new List<ExcelData>();
 
             using (var package = new ExcelPackage(new FileInfo(filePath)))
@@ -102,9 +103,11 @@ namespace SPOPComparisonTool
                     }
                 }
 
-                //foreach (var name in workSheetNames)
+                foreach (var name in workSheetNames)
                 {
-                    var testWorkSheet = package.Workbook.Worksheets[7];
+                    var testWorkSheet = package.Workbook.Worksheets[name];
+
+                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
 
                     int rowCount = testWorkSheet.Dimension.Rows;
 
@@ -153,21 +156,29 @@ namespace SPOPComparisonTool
                             excelRecord.BulletPoint = testWorkSheet.Cells[startRow, 2].Text;
 
                             excelData.Add(excelRecord);
-
                         }
-
-                        //Integrate Veerendra's Code
 
                         var reader = GetReader();
 
                         foreach (var record in excelData)
                         {
-                            if (record.BulletPoint != "1.D") continue;
+                            //if (record.BulletPoint != "1.D") continue;
 
                             string withoutJapanese = record.SPOPName.Split(' ')[0];
                             string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
 
                             var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
+
+                            var bulletInfo = comparisonResult.m_new.m_sBullet;
+
+                            if (!string.IsNullOrEmpty(bulletInfo))
+                            {
+                                var highLight = new Highlight();
+                                highLight.Row = record.Row;
+                                highLight.SPOPName = record.SPOPName;
+                                highLight.Columns2Highlight = new List<string> { $"{record.BulletPoint}_{record.Row}_2" };
+                                changedBulletPoints.Add(highLight);
+                            }
 
                             if (comparisonResult != null && comparisonResult.m_eCompareType == CompareType.SAME)
                             {
@@ -178,8 +189,6 @@ namespace SPOPComparisonTool
                             var bulletText = comparisonResult.m_new.m_sText;
 
                             var revisedManualRequirement = new List<string>();
-
-                            var highLight = new Highlight();
 
                             var manualRequirementRow = record.Row;
 
@@ -194,25 +203,18 @@ namespace SPOPComparisonTool
 
                             if (revisedManualRequirement.Any())
                             {
+                                var highLight = new Highlight();
                                 highLight.Row = record.Row;
                                 highLight.SPOPName = record.SPOPName;
-                                highLight.Columns2Hightlight = revisedManualRequirement;
-                                highlights.Add(highLight);
+                                highLight.Columns2Highlight = revisedManualRequirement;
+                                changedManualRequirements.Add(highLight);
                             }
                         }
-
-
-                        //        //Do the comparison here and create the HighLight Object
-                        //        var h = new Highlight();
-                        //        h.SheetName = "SPOP15 表";
-                        //        h.Row = 18;
-                        //        h.Columns = new List<int>() { 7 };
-                        //        highlights.Add(h);
                     }
                 }
             }
 
-            HighlightManualRequirement(highlights, Color.Yellow);
+            HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow);
 
             // Open the Excel file
             Process.Start(new ProcessStartInfo(txtCleaningRecord.Text)
@@ -230,24 +232,46 @@ namespace SPOPComparisonTool
             return false;
         }
 
-        //private (int merged, int mergedStartRow, int mergedEndRow, int mergedRowCount) GetMergedCellLastRow(ExcelWorksheet worksheet, int row, int column)
-        //{
-        //    foreach (string rangeAddress in worksheet.MergedCells)
-        //    {
-        //        ExcelRange mergedRange = worksheet.Cells[rangeAddress];
+        private void HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color)
+        {
+            using (var excelPackage = new ExcelPackage(new FileInfo(txtCleaningRecord.Text)))
+            {
+                HighlightList(excelPackage, manualRequirements, color, true);
+                HighlightList(excelPackage, bulletPoints, color, false);
 
-        //        if (row >= mergedRange.Start.Row &&
-        //            row <= mergedRange.End.Row &&
-        //            column >= mergedRange.Start.Column &&
-        //            column <= mergedRange.End.Column)
-        //        {
-        //            int rowCount = mergedRange.End.Row - mergedRange.Start.Row + 1;
-        //            return (1, mergedRange.Start.Row, mergedRange.End.Row, rowCount);
-        //        }
-        //    }
+                excelPackage.Save();
+            }
+        }
 
-        //    return (0, row, row, 1);
-        //}
+        private void HighlightList(ExcelPackage excelPackage, List<Highlight> highLight, Color color, bool highlightNextColumn)
+        {
+            foreach (var hl in highLight)
+            {
+                ExcelWorksheet worksheet =
+                    excelPackage.Workbook.Worksheets[hl.SPOPName];
+
+                foreach (var column in hl.Columns2Highlight)
+                {
+                    var parts = column.Split('_');
+
+                    var rowIndex = int.Parse(parts[1]);
+                    var columnIndex = int.Parse(parts[2]);
+
+                    var endColumn = highlightNextColumn
+                        ? columnIndex + 1
+                        : columnIndex;
+
+                    var cells = worksheet.Cells[
+                        rowIndex,
+                        columnIndex,
+                        rowIndex,
+                        endColumn];
+
+                    cells.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                    cells.Style.Fill.BackgroundColor.SetColor(color);
+                }
+            }
+        }
 
         private void Form1_Load(object sender, EventArgs e)
         {
@@ -262,26 +286,37 @@ namespace SPOPComparisonTool
             this.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;
         }
 
-        private void HighlightManualRequirement(List<Highlight> highLight, Color color)
+        private void HighlightChanges(List<Highlight> highLight, Color color, bool highlightNextColumn)
         {
             using (var excelPackage = new ExcelPackage(new FileInfo(txtCleaningRecord.Text)))
             {
                 foreach (var hl in highLight)
                 {
-                    ExcelWorksheet worksheet = excelPackage.Workbook.Worksheets[hl.SPOPName];
+                    ExcelWorksheet worksheet =
+                        excelPackage.Workbook.Worksheets[hl.SPOPName];
 
-                    foreach (var column in hl.Columns2Hightlight)
+                    foreach (var column in hl.Columns2Highlight)
                     {
-                        var rowIndex = int.Parse(column.Split('_')[1]);
-                        var columnIndex = int.Parse(column.Split('_')[2]);
+                        var parts = column.Split('_');
 
-                        worksheet.Cells[rowIndex, columnIndex, rowIndex, columnIndex + 1].Style.Fill.PatternType =
-                            ExcelFillStyle.Solid;
+                        var rowIndex = int.Parse(parts[1]);
+                        var columnIndex = int.Parse(parts[2]);
 
-                        worksheet.Cells[rowIndex, columnIndex, rowIndex, columnIndex + 1].Style.Fill.BackgroundColor
-                            .SetColor(color);
+                        var endColumn = highlightNextColumn
+                            ? columnIndex + 1
+                            : columnIndex;
+
+                        var cells = worksheet.Cells[
+                            rowIndex,
+                            columnIndex,
+                            rowIndex,
+                            endColumn];
+
+                        cells.Style.Fill.PatternType = ExcelFillStyle.Solid;
+                        cells.Style.Fill.BackgroundColor.SetColor(color);
                     }
                 }
+
                 excelPackage.Save();
             }
         }
@@ -343,6 +378,73 @@ namespace SPOPComparisonTool
             var reader = new SPMReader();
             reader.ReadSPM(txtOldRevisionLink.Text, txtNewRevisionLink.Text, txtCleaningRecord.Text);
             return reader;
+        }
+
+
+        bool CompareValues(string value1, string value2)
+        {
+            return NormalizeMeasurement(value1) == NormalizeMeasurement(value2);
+        }
+
+        string NormalizeMeasurement(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return string.Empty;
+
+            value = value.Trim().ToLowerInvariant();
+
+            // Normalize degree representations
+            value = Regex.Replace(value, @"°", " degree ");
+            value = Regex.Replace(value, @"\bdegrees\b", "degree");
+
+            // Add other measurement aliases here
+            var unitAliases = new Dictionary<string, string>
+    {
+        // Length
+        { "millimeters", "mm" },
+        { "millimeter", "mm" },
+        { "millimetre", "mm" },
+        { "millimetres", "mm" },
+
+        { "centimeters", "cm" },
+        { "centimeter", "cm" },
+
+        { "meters", "m" },
+        { "meter", "m" },
+
+        { "inches", "in" },
+        { "inch", "in" },
+
+        { "feet", "ft" },
+        { "foot", "ft" },
+
+        // Weight
+        { "kilograms", "kg" },
+        { "kilogram", "kg" },
+
+        { "grams", "g" },
+        { "gram", "g" },
+
+        // Temperature
+        { "celsius", "c" },
+        { "fahrenheit", "f" }
+    };
+
+            foreach (var alias in unitAliases)
+            {
+                value = Regex.Replace(
+                    value,
+                    $@"\b{Regex.Escape(alias.Key)}\b",
+                    alias.Value);
+            }
+
+            // Normalize spaces around hyphen
+            value = Regex.Replace(value, @"\s*-\s*", " - ");
+
+            // Normalize whitespace
+            value = Regex.Replace(value, @"\s+", " ");
+
+            return value.Trim();
         }
     }
 }

@@ -13,6 +13,6 @@ namespace SPOPComparisonTool
         public string SPOPName { get; set; }
         public int Row { get; set; }
 
-        public List<string> Columns2Hightlight { get; set; }
+        public List<string> Columns2Highlight { get; set; }
     }
 }
