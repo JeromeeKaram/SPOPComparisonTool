@@ -10,12 +10,12 @@ namespace SPOPComparisonTool
     {
         public ExcelData() { }
 
-        public string SheetName { get; set; }
+        public string SPOPName { get; set; }
 
         public int Row { get; set; }
 
-        public string BColumnText { get; set; }
+        public string BulletPoint { get; set; }
 
-        public List<string> GHColumnText { get; set; }
+        public List<string> ManualRequirement { get; set; }
     }
 }

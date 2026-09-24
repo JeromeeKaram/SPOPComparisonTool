@@ -10,9 +10,9 @@ namespace SPOPComparisonTool
     {
         public Highlight() { }
 
-        public string SheetName { get; set; }
+        public string SPOPName { get; set; }
         public int Row { get; set; }
 
-        public List<int> Columns { get; set; }
+        public List<string> Columns2Hightlight { get; set; }
     }
 }
