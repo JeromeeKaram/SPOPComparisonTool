@@ -27,7 +27,7 @@ namespace SPOPComparisonTool
             this.MaximizeBox = false;
         }
 
-        private void btnRun_Click(object sender, EventArgs e)
+        private async void btnRun_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(txtOldRevisionLink.Text))
             {
@@ -53,7 +53,14 @@ namespace SPOPComparisonTool
                 progressBar1.MarqueeAnimationSpeed = 30;
                 progressBar1.Visible = true;
 
-                ReadExcel(txtCleaningRecord.Text);
+                await Task.Run(() =>
+                {
+                    ReadExcel(txtCleaningRecord.Text);
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
             }
             finally
             {
@@ -107,7 +114,7 @@ namespace SPOPComparisonTool
                 {
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
-                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
 
                     int rowCount = testWorkSheet.Dimension.Rows;
 
@@ -169,6 +176,7 @@ namespace SPOPComparisonTool
 
                             var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
 
+                            if (comparisonResult == null) continue;
                             var bulletInfo = comparisonResult.m_new.m_sBullet;
 
                             if (!string.IsNullOrEmpty(bulletInfo))
@@ -188,25 +196,30 @@ namespace SPOPComparisonTool
                             var newRevisionBulletData = comparisonResult.m_new;
                             var bulletText = comparisonResult.m_new.m_sText;
 
-                            var revisedManualRequirement = new List<string>();
+                            var highLightManualRequirement = new List<string>();
 
                             var manualRequirementRow = record.Row;
 
                             foreach (var item in record.ManualRequirement)
                             {
-                                if (!ManualRequirementExistsInNewRevision(bulletText, item))
+                                var splitItem = item.Contains(":")
+    ? item.Split(':')[1].Trim()
+    : item.Trim();
+                                var variants = GetVariants(splitItem);
+
+                                if (!ManualRequirementExistsInNewRevision(bulletText, variants))
                                 {
-                                    revisedManualRequirement.Add($"{item}_{manualRequirementRow}_7");
+                                    highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
                                 }
                                 manualRequirementRow = manualRequirementRow + 1;
                             }
 
-                            if (revisedManualRequirement.Any())
+                            if (highLightManualRequirement.Any())
                             {
                                 var highLight = new Highlight();
                                 highLight.Row = record.Row;
                                 highLight.SPOPName = record.SPOPName;
-                                highLight.Columns2Highlight = revisedManualRequirement;
+                                highLight.Columns2Highlight = highLightManualRequirement;
                                 changedManualRequirements.Add(highLight);
                             }
                         }
@@ -223,12 +236,24 @@ namespace SPOPComparisonTool
             });
         }
 
-        private bool ManualRequirementExistsInNewRevision(string bulletText, string manualRequirement)
+        private bool ManualRequirementExistsInNewRevision(
+    string bulletText,
+    List<string> variants)
         {
-            if (!string.IsNullOrEmpty(bulletText) && bulletText.Contains(manualRequirement))
+            if (string.IsNullOrWhiteSpace(bulletText) || variants == null)
+                return false;
+
+            bulletText = bulletText.ToLower();
+
+            foreach (var variant in variants)
             {
-                return true;
+                if (!string.IsNullOrWhiteSpace(variant) &&
+                    bulletText.Contains(variant.ToLower()))
+                {
+                    return true;
+                }
             }
+
             return false;
         }
 
@@ -284,41 +309,6 @@ namespace SPOPComparisonTool
 
             lblHeader.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;
             this.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;
-        }
-
-        private void HighlightChanges(List<Highlight> highLight, Color color, bool highlightNextColumn)
-        {
-            using (var excelPackage = new ExcelPackage(new FileInfo(txtCleaningRecord.Text)))
-            {
-                foreach (var hl in highLight)
-                {
-                    ExcelWorksheet worksheet =
-                        excelPackage.Workbook.Worksheets[hl.SPOPName];
-
-                    foreach (var column in hl.Columns2Highlight)
-                    {
-                        var parts = column.Split('_');
-
-                        var rowIndex = int.Parse(parts[1]);
-                        var columnIndex = int.Parse(parts[2]);
-
-                        var endColumn = highlightNextColumn
-                            ? columnIndex + 1
-                            : columnIndex;
-
-                        var cells = worksheet.Cells[
-                            rowIndex,
-                            columnIndex,
-                            rowIndex,
-                            endColumn];
-
-                        cells.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                        cells.Style.Fill.BackgroundColor.SetColor(color);
-                    }
-                }
-
-                excelPackage.Save();
-            }
         }
 
         private void exitToolStripMenuItem_Click(object sender, EventArgs e)
@@ -381,70 +371,97 @@ namespace SPOPComparisonTool
         }
 
 
-        bool CompareValues(string value1, string value2)
+        private List<string> GetVariants(string value)
         {
-            return NormalizeMeasurement(value1) == NormalizeMeasurement(value2);
-        }
+            var variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-        string NormalizeMeasurement(string value)
-        {
             if (string.IsNullOrWhiteSpace(value))
-                return string.Empty;
+                return variants.ToList();
 
-            value = value.Trim().ToLowerInvariant();
+            value = value.Trim();
 
-            // Normalize degree representations
-            value = Regex.Replace(value, @"°", " degree ");
-            value = Regex.Replace(value, @"\bdegrees\b", "degree");
-
-            // Add other measurement aliases here
-            var unitAliases = new Dictionary<string, string>
-    {
-        // Length
-        { "millimeters", "mm" },
-        { "millimeter", "mm" },
-        { "millimetre", "mm" },
-        { "millimetres", "mm" },
-
-        { "centimeters", "cm" },
-        { "centimeter", "cm" },
-
-        { "meters", "m" },
-        { "meter", "m" },
-
-        { "inches", "in" },
-        { "inch", "in" },
-
-        { "feet", "ft" },
-        { "foot", "ft" },
-
-        // Weight
-        { "kilograms", "kg" },
-        { "kilogram", "kg" },
-
-        { "grams", "g" },
-        { "gram", "g" },
-
-        // Temperature
-        { "celsius", "c" },
-        { "fahrenheit", "f" }
-    };
-
-            foreach (var alias in unitAliases)
-            {
-                value = Regex.Replace(
-                    value,
-                    $@"\b{Regex.Escape(alias.Key)}\b",
-                    alias.Value);
-            }
+            // Original
+            variants.Add(value);
 
             // Normalize spaces around hyphen
-            value = Regex.Replace(value, @"\s*-\s*", " - ");
+            string normalized = Regex.Replace(value, @"\s*-\s*", " - ");
+            variants.Add(normalized);
 
-            // Normalize whitespace
-            value = Regex.Replace(value, @"\s+", " ");
+            // Unit aliases
+            var unitAliases = new Dictionary<string, string[]>(
+                StringComparer.OrdinalIgnoreCase)
+    {
+        { "°", new[] { "°", "degree", "degrees" } },
+        { "degree", new[] { "°", "degree", "degrees" } },
+        { "degrees", new[] { "°", "degree", "degrees" } },
 
-            return value.Trim();
+        { "℃", new[] { "℃", "°C" } },
+        { "°C", new[] { "℃", "°C" } },
+
+        { "mm", new[] { "mm", "millimeter", "millimeters",
+                        "millimetre", "millimetres" } },
+
+        { "cm", new[] { "cm", "centimeter", "centimeters",
+                        "centimetre", "centimetres" } },
+
+        { "m", new[] { "m", "meter", "meters",
+                       "metre", "metres" } },
+
+        { "inch", new[] { "inch", "inches", "in" } },
+        { "inches", new[] { "inch", "inches", "in" } },
+        { "in", new[] { "inch", "inches", "in" } },
+
+        { "ft", new[] { "ft", "foot", "feet" } },
+        { "foot", new[] { "ft", "foot", "feet" } },
+        { "feet", new[] { "ft", "foot", "feet" } },
+
+        { "min", new[] { "min", "min.", "minute", "minutes" } },
+        { "min.", new[] { "min", "min.", "minute", "minutes" } },
+        { "minute", new[] { "min", "min.", "minute", "minutes" } },
+        { "minutes", new[] { "min", "min.", "minute", "minutes" } },
+
+        { "kg", new[] { "kg", "kilogram", "kilograms" } },
+        { "g", new[] { "g", "gram", "grams" } },
+
+        { "mpa", new[] { "mpa", "MPa" } }
+    };
+
+            // Find the unit at the end
+            foreach (var unit in unitAliases)
+            {
+                var match = Regex.Match(
+                    normalized,
+                    @"^(?<number>.+?)\s*" +
+                    Regex.Escape(unit.Key) +
+                    @"\.?$",
+                    RegexOptions.IgnoreCase);
+
+                if (!match.Success)
+                    continue;
+
+                string numberPart = match.Groups["number"].Value.Trim();
+
+                foreach (string alias in unit.Value)
+                {
+                    variants.Add(numberPart + " " + alias);
+                }
+
+                break;
+            }
+
+            // Generate different spacing around "-"
+            foreach (string variant in variants.ToList())
+            {
+                if (!variant.Contains("-"))
+                    continue;
+
+                variants.Add(Regex.Replace(variant, @"\s*-\s*", "-"));
+                variants.Add(Regex.Replace(variant, @"\s*-\s*", "- "));
+                variants.Add(Regex.Replace(variant, @"\s*-\s*", " -"));
+                variants.Add(Regex.Replace(variant, @"\s*-\s*", " - "));
+            }
+
+            return variants.ToList();
         }
     }
 }
