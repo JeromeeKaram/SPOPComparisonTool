@@ -163,7 +163,7 @@ namespace SPOPComparisonTool
                             excelRecord.Row = startRow;
 
                             // Text of the merged B cell
-                            excelRecord.BulletPoint = testWorkSheet.Cells[startRow, 2].Text;
+                            excelRecord.BulletPoint = Regex.Replace(testWorkSheet.Cells[startRow, 2].Text, @"\r?\n\s*", "");
 
                             excelData.Add(excelRecord);
                         }
@@ -177,6 +177,8 @@ namespace SPOPComparisonTool
 
                 string withoutJapanese = record.SPOPName.Split(' ')[0];
                 string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+
+                //if (spaceBetweenSPOPandNumber != "SPOP 225") continue;
 
                 var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
 
