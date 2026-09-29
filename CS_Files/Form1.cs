@@ -47,6 +47,12 @@ namespace SPOPComparisonTool
                 return;
             }
 
+            if (string.IsNullOrEmpty(txtSaveLocation.Text))
+            {
+                MessageBox.Show("Please choose save location");
+                return;
+            }
+
             try
             {
                 progressBar1.Style = ProgressBarStyle.Marquee;
@@ -117,7 +123,7 @@ namespace SPOPComparisonTool
 
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
-                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
 
                     int rowCount = testWorkSheet.Dimension.Rows;
 
@@ -173,17 +179,15 @@ namespace SPOPComparisonTool
 
             foreach (var record in excelData)
             {
-                //if (record.BulletPoint != "1.D") continue;
+                if (record.BulletPoint != "1.D") continue;
 
                 string withoutJapanese = record.SPOPName.Split(' ')[0];
                 string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
 
-                //if (spaceBetweenSPOPandNumber != "SPOP 225") continue;
-
                 var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
 
                 if (comparisonResult == null) continue;
-                var bulletInfo = comparisonResult.m_new.m_sBullet;
+                var bulletInfo = comparisonResult.m_new.m_sBullet; // Need clarification on this
 
                 if (!string.IsNullOrEmpty(bulletInfo))
                 {
@@ -228,10 +232,10 @@ namespace SPOPComparisonTool
                 }
             }
 
-            HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow);
+            var outputFilePath = HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow);
 
             // Open the Excel file
-            Process.Start(new ProcessStartInfo(txtCleaningRecord.Text)
+            Process.Start(new ProcessStartInfo(outputFilePath)
             {
                 UseShellExecute = true
             });
@@ -258,15 +262,28 @@ namespace SPOPComparisonTool
             return false;
         }
 
-        private void HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color)
+        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color)
         {
-            using (var excelPackage = new ExcelPackage(new FileInfo(txtCleaningRecord.Text)))
+            var sourceFile = new FileInfo(txtCleaningRecord.Text);
+
+            var outputFilePath = Path.Combine(
+        sourceFile.DirectoryName,
+        Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx");
+
+            using (var excelPackage = new ExcelPackage(sourceFile))
             {
                 HighlightList(excelPackage, manualRequirements, color, true);
                 HighlightList(excelPackage, bulletPoints, color, false);
 
-                excelPackage.Save();
+                var outputFile = new FileInfo(
+        Path.Combine(
+            sourceFile.DirectoryName,
+            Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx"));
+
+                excelPackage.SaveAs(new FileInfo(outputFilePath));
             }
+
+            return outputFilePath;
         }
 
         private void HighlightList(ExcelPackage excelPackage, List<Highlight> highLight, Color color, bool highlightNextColumn)
@@ -306,6 +323,7 @@ namespace SPOPComparisonTool
             txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
             txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
             txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
+            txtSaveLocation.Text = "D:\\CleaningRecord\\Changes.xlsx";
 #endif
 
             lblHeader.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;
@@ -463,6 +481,16 @@ namespace SPOPComparisonTool
             }
 
             return variants.ToList();
+        }
+
+        private void label4_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void textBox1_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }
