@@ -123,7 +123,11 @@ namespace SPOPComparisonTool
 
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
-                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+
+                    //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
+
+                    if (testWorkSheet.Name != "SPOP2 表") continue; //Comment this line to process all worksheets
 
                     int rowCount = testWorkSheet.Dimension.Rows;
 
@@ -141,7 +145,7 @@ namespace SPOPComparisonTool
 
                             if (value.Contains("Para.") && value.Contains("No."))
                             {
-                                rowStartsAt = row;
+                                rowStartsAt = row + 1;
                                 break;
                             }
                         }
@@ -158,15 +162,25 @@ namespace SPOPComparisonTool
                             var endRow = mergedRange.EndRow;
 
                             var manualRequirements = new List<string>();
+                            var procedure = "";
 
                             for (var i = startRow; i <= endRow; i++)
                             {
                                 manualRequirements.Add(testWorkSheet.Cells[i, 7].Text);
+                                procedure += testWorkSheet.Cells[i, 3].Text;
                             }
 
                             excelRecord.ManualRequirement = manualRequirements;
                             excelRecord.SPOPName = testWorkSheet.Name;
                             excelRecord.Row = startRow;
+
+                            var match = Regex.Match(procedure, @"^SPOP\s*(\d+)");
+
+                            if (match.Success)
+                            {
+                                excelRecord.IsNavigateToAnotherSPOP = true;
+                                excelRecord.NavigateToSPOPName = $"SPOP {match.Groups[1].Value}";
+                            }
 
                             // Text of the merged B cell
                             excelRecord.BulletPoint = Regex.Replace(testWorkSheet.Cells[startRow, 2].Text, @"\r?\n\s*", "");
@@ -179,17 +193,27 @@ namespace SPOPComparisonTool
 
             foreach (var record in excelData)
             {
-                if (record.BulletPoint != "1.D") continue;
+                if (record.BulletPoint != "1.B.(2)") continue;
 
-                string withoutJapanese = record.SPOPName.Split(' ')[0];
-                string spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+                string spaceBetweenSPOPandNumber = "";
+
+                if (record.IsNavigateToAnotherSPOP)
+                {
+                    spaceBetweenSPOPandNumber = record.NavigateToSPOPName;
+                }
+                else
+                {
+                    string withoutJapanese = record.SPOPName.Split(' ')[0];
+                    spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+                }
 
                 var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
 
                 if (comparisonResult == null) continue;
-                var bulletInfo = comparisonResult.m_new.m_sBullet; // Need clarification on this
+                var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
+                var bulletInfoOld = comparisonResult.m_old.m_sCompleteBullet;
 
-                if (!string.IsNullOrEmpty(bulletInfo))
+                if (!string.Equals(bulletInfoOld, bulletInfoNew))
                 {
                     var highLight = new Highlight();
                     highLight.Row = record.Row;
@@ -198,37 +222,37 @@ namespace SPOPComparisonTool
                     changedBulletPoints.Add(highLight);
                 }
 
-                if (comparisonResult != null && comparisonResult.m_eCompareType == CompareType.SAME)
+                if (comparisonResult != null && comparisonResult.m_eCompareType != CompareType.SAME)
                 {
-                    continue;
-                }
+                    var newRevisionBulletData = comparisonResult.m_new;
+                    var bulletText = comparisonResult.m_new.m_sText;
 
-                var newRevisionBulletData = comparisonResult.m_new;
-                var bulletText = comparisonResult.m_new.m_sText;
+                    var highLightManualRequirement = new List<string>();
 
-                var highLightManualRequirement = new List<string>();
+                    var manualRequirementRow = record.Row;
 
-                var manualRequirementRow = record.Row;
-
-                foreach (var item in record.ManualRequirement)
-                {
-                    var splitItem = item.Contains(":") ? item.Split(':')[1].Trim() : item.Trim();
-                    var variants = GetVariants(splitItem);
-
-                    if (!ManualRequirementExistsInNewRevision(bulletText, variants))
+                    foreach (var item in record.ManualRequirement)
                     {
-                        highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
-                    }
-                    manualRequirementRow = manualRequirementRow + 1;
-                }
+                        if (IgnoreManualRequirement(item)) continue;
 
-                if (highLightManualRequirement.Any())
-                {
-                    var highLight = new Highlight();
-                    highLight.Row = record.Row;
-                    highLight.SPOPName = record.SPOPName;
-                    highLight.Columns2Highlight = highLightManualRequirement;
-                    changedManualRequirements.Add(highLight);
+                        var splitItem = item.Contains(":") ? item.Split(':')[1].Trim() : item.Trim();
+                        var variants = GetVariants(splitItem);
+
+                        if (!ManualRequirementExistsInNewRevision(bulletText, variants))
+                        {
+                            highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
+                        }
+                        manualRequirementRow = manualRequirementRow + 1;
+                    }
+
+                    if (highLightManualRequirement.Any())
+                    {
+                        var highLight = new Highlight();
+                        highLight.Row = record.Row;
+                        highLight.SPOPName = record.SPOPName;
+                        highLight.Columns2Highlight = highLightManualRequirement;
+                        changedManualRequirements.Add(highLight);
+                    }
                 }
             }
 
@@ -239,6 +263,45 @@ namespace SPOPComparisonTool
             {
                 UseShellExecute = true
             });
+        }
+
+        private bool IgnoreManualRequirement(string manualRequirementItem)
+        {
+
+            if (Regex.IsMatch(manualRequirementItem, @"^SPS\s+\d+$"))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("super-bee"))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("tank no."))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("tc-"))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("cee bee"))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("polyplus prime"))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("PMC "))
+            {
+                return true;
+            }
+            else if (manualRequirementItem.ToLower().StartsWith("SPMC "))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         private bool ManualRequirementExistsInNewRevision(
@@ -481,16 +544,6 @@ namespace SPOPComparisonTool
             }
 
             return variants.ToList();
-        }
-
-        private void label4_Click(object sender, EventArgs e)
-        {
-
-        }
-
-        private void textBox1_TextChanged(object sender, EventArgs e)
-        {
-
         }
     }
 }

@@ -237,7 +237,6 @@
             this.label4.Size = new System.Drawing.Size(76, 14);
             this.label4.TabIndex = 21;
             this.label4.Text = "Save Here";
-            this.label4.Click += new System.EventHandler(this.label4_Click);
             // 
             // txtSaveLocation
             // 
@@ -247,7 +246,6 @@
             this.txtSaveLocation.Name = "txtSaveLocation";
             this.txtSaveLocation.Size = new System.Drawing.Size(489, 22);
             this.txtSaveLocation.TabIndex = 20;
-            this.txtSaveLocation.TextChanged += new System.EventHandler(this.textBox1_TextChanged);
             // 
             // Form1
             // 
