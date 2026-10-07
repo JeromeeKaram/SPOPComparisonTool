@@ -16,7 +16,7 @@ namespace SPOPComparisonTool
 
         public string BulletPoint { get; set; }
 
-        public List<string> ManualRequirement { get; set; }
+        public List<(string Requirement, int Row)> ManualRequirement { get; set; }
 
         public bool IsNavigateToAnotherSPOP { get; set; } = false;
 

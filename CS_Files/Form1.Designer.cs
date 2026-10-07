@@ -46,8 +46,6 @@
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
-            this.label4 = new System.Windows.Forms.Label();
-            this.txtSaveLocation = new System.Windows.Forms.TextBox();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -106,8 +104,6 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.label4);
-            this.groupBox1.Controls.Add(this.txtSaveLocation);
             this.groupBox1.Controls.Add(this.txtOldRevisionLink);
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Controls.Add(this.txtNewRevisionLink);
@@ -228,25 +224,6 @@
             this.progressBar1.Size = new System.Drawing.Size(706, 20);
             this.progressBar1.TabIndex = 14;
             // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label4.Location = new System.Drawing.Point(44, 127);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(76, 14);
-            this.label4.TabIndex = 21;
-            this.label4.Text = "Save Here";
-            // 
-            // txtSaveLocation
-            // 
-            this.txtSaveLocation.Enabled = false;
-            this.txtSaveLocation.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtSaveLocation.Location = new System.Drawing.Point(182, 123);
-            this.txtSaveLocation.Name = "txtSaveLocation";
-            this.txtSaveLocation.Size = new System.Drawing.Size(489, 22);
-            this.txtSaveLocation.TabIndex = 20;
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -291,8 +268,6 @@
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.TextBox txtOldRevisionLink;
         private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.Label label4;
-        private System.Windows.Forms.TextBox txtSaveLocation;
     }
 }
 

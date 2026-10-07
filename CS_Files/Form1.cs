@@ -47,11 +47,9 @@ namespace SPOPComparisonTool
                 return;
             }
 
-            if (string.IsNullOrEmpty(txtSaveLocation.Text))
-            {
-                MessageBox.Show("Please choose save location");
-                return;
-            }
+            string oldRevisionLink = txtOldRevisionLink.Text;
+            string newRevisionLink = txtNewRevisionLink.Text;
+            string cleaningRecord = txtCleaningRecord.Text;
 
             try
             {
@@ -61,7 +59,7 @@ namespace SPOPComparisonTool
 
                 await Task.Run(() =>
                 {
-                    ReadExcel(txtCleaningRecord.Text);
+                    ReadExcel(oldRevisionLink, newRevisionLink, cleaningRecord);
                 });
             }
             catch (Exception ex)
@@ -90,16 +88,19 @@ namespace SPOPComparisonTool
             dialog.Dispose();
         }
 
-        private void ReadExcel(string filePath)
+        private void ReadExcel(string txtOldRevisionLink, string txtNewRevisionLink, string txtCleaningRecord)
         {
             var workSheetNames = new List<string>();
             var changedManualRequirements = new List<Highlight>();
             var changedBulletPoints = new List<Highlight>();
             var excelData = new List<ExcelData>();
 
+            //var noData = new List<(string SPOP, string Bullet)>();
+            //var data = new List<(string SPOP, string Bullet)>();
+
             var reader = GetReader();
 
-            using (var package = new ExcelPackage(new FileInfo(filePath)))
+            using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
             {
                 var seen = new HashSet<string>();
 
@@ -120,14 +121,25 @@ namespace SPOPComparisonTool
 
                 foreach (var name in workSheetNames)
                 {
-
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
                     //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
 
-                    //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
+
+                    //if (testWorkSheet.Name != "SPOP209 表") continue; //Comment this line to process all worksheets
+
+                    //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
 
                     if (testWorkSheet.Name != "SPOP2 表") continue; //Comment this line to process all worksheets
+
+
+                    //Debug.WriteLine($"Processing sheet: {testWorkSheet.Name}");
+
+                    //if (testWorkSheet.Name.StartsWith("SPOP209"))
+                    //{
+                    //    Debug.WriteLine($"Found SPOP209 sheet: {testWorkSheet.Name}");
+                    //}
 
                     int rowCount = testWorkSheet.Dimension.Rows;
 
@@ -161,12 +173,19 @@ namespace SPOPComparisonTool
                             var startRow = mergedRange.StartRow;
                             var endRow = mergedRange.EndRow;
 
-                            var manualRequirements = new List<string>();
+                            var manualRequirements = new List<(string Requirement, int Row)>();
                             var procedure = "";
 
                             for (var i = startRow; i <= endRow; i++)
                             {
-                                manualRequirements.Add(testWorkSheet.Cells[i, 7].Text);
+                                var requirement = testWorkSheet.Cells[i, 7].Text.Trim();
+
+                                if (string.IsNullOrWhiteSpace(requirement) || IgnoreManualRequirement(requirement))
+                                {
+                                    continue;
+                                }
+
+                                manualRequirements.Add((requirement, i));
                                 procedure += testWorkSheet.Cells[i, 3].Text;
                             }
 
@@ -191,73 +210,93 @@ namespace SPOPComparisonTool
                 }
             }
 
-            foreach (var record in excelData)
+            var manualReqs = excelData.Where(ed => ed.ManualRequirement != null && ed.ManualRequirement.Any()).ToList();
+
+            foreach (var manualRequirement in manualReqs)
             {
-                if (record.BulletPoint != "1.B.(2)") continue;
+                if (manualRequirement.BulletPoint != "1.A.") continue;
 
                 string spaceBetweenSPOPandNumber = "";
 
-                if (record.IsNavigateToAnotherSPOP)
+                if (manualRequirement.IsNavigateToAnotherSPOP)
                 {
-                    spaceBetweenSPOPandNumber = record.NavigateToSPOPName;
+                    spaceBetweenSPOPandNumber = manualRequirement.NavigateToSPOPName;
                 }
                 else
                 {
-                    string withoutJapanese = record.SPOPName.Split(' ')[0];
+                    string withoutJapanese = manualRequirement.SPOPName.Split(' ')[0];
                     spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
                 }
 
-                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, record.BulletPoint);
+                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, manualRequirement.BulletPoint);
 
-                if (comparisonResult == null) continue;
+                if (comparisonResult == null)
+                {
+                    //noData.Add((record.SPOPName, record.BulletPoint));
+                    continue;
+                }
+                //data.Add((record.SPOPName, record.BulletPoint));
+
                 var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
                 var bulletInfoOld = comparisonResult.m_old.m_sCompleteBullet;
 
                 if (!string.Equals(bulletInfoOld, bulletInfoNew))
                 {
                     var highLight = new Highlight();
-                    highLight.Row = record.Row;
-                    highLight.SPOPName = record.SPOPName;
-                    highLight.Columns2Highlight = new List<string> { $"{record.BulletPoint}_{record.Row}_2" };
+                    highLight.Row = manualRequirement.Row;
+                    highLight.SPOPName = manualRequirement.SPOPName;
+                    highLight.Columns2Highlight = new List<string> { $"{manualRequirement.BulletPoint}_{manualRequirement.Row}_2" };
                     changedBulletPoints.Add(highLight);
                 }
 
                 if (comparisonResult != null && comparisonResult.m_eCompareType != CompareType.SAME)
                 {
-                    var newRevisionBulletData = comparisonResult.m_new;
-                    var bulletText = comparisonResult.m_new.m_sText;
+                    //var newRevisionBulletData = comparisonResult.m_new;
+                    var newVersionbulletText = comparisonResult.m_new.m_sFullText;
 
                     var highLightManualRequirement = new List<string>();
 
-                    var manualRequirementRow = record.Row;
+                    //var manualRequirementRow = manualRequirement.Row;
 
-                    foreach (var item in record.ManualRequirement)
+                    foreach (var item in manualRequirement.ManualRequirement)
                     {
-                        if (IgnoreManualRequirement(item)) continue;
-
-                        var splitItem = item.Contains(":") ? item.Split(':')[1].Trim() : item.Trim();
+                        var splitItem = item.Requirement.Contains(":") ? item.Requirement.Split(':')[1].Trim() : item.Requirement.Trim();
                         var variants = GetVariants(splitItem);
 
-                        if (!ManualRequirementExistsInNewRevision(bulletText, variants))
+                        //#if DEBUG
+                        //                        foreach(var v in variants)
+                        //                        {
+                        //                            System.Diagnostics.Debug.WriteLine($"'{v}'");
+                        //                        }
+                        //#endif
+
+                        if (splitItem.ToLower().Contains("mpa"))
                         {
-                            highLightManualRequirement.Add($"{splitItem}_{manualRequirementRow}_7");
+
                         }
-                        manualRequirementRow = manualRequirementRow + 1;
+
+                        if (!ManualRequirementExistsInNewRevision(newVersionbulletText, variants) &&
+                            !RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem))
+                        {
+                            highLightManualRequirement.Add($"{splitItem}_{item.Row}_7");
+                        }
+                        //manualRequirementRow = manualRequirementRow + 1;
                     }
 
                     if (highLightManualRequirement.Any())
                     {
                         var highLight = new Highlight();
-                        highLight.Row = record.Row;
-                        highLight.SPOPName = record.SPOPName;
+                        highLight.Row = manualRequirement.Row;
+                        highLight.SPOPName = manualRequirement.SPOPName;
                         highLight.Columns2Highlight = highLightManualRequirement;
                         changedManualRequirements.Add(highLight);
                     }
                 }
             }
 
-            var outputFilePath = HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow);
+            var outputFilePath = HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow, txtCleaningRecord);
 
+            //CreateSPOPBulletExcel(data, noData, txtCleaningRecord);
             // Open the Excel file
             Process.Start(new ProcessStartInfo(outputFilePath)
             {
@@ -267,8 +306,7 @@ namespace SPOPComparisonTool
 
         private bool IgnoreManualRequirement(string manualRequirementItem)
         {
-
-            if (Regex.IsMatch(manualRequirementItem, @"^SPS\s+\d+$"))
+            if (Regex.IsMatch(manualRequirementItem, @"^SPS\s+\d+(-\d+)*$"))
             {
                 return true;
             }
@@ -292,11 +330,11 @@ namespace SPOPComparisonTool
             {
                 return true;
             }
-            else if (manualRequirementItem.ToLower().StartsWith("PMC "))
+            else if (manualRequirementItem.ToLower().StartsWith("pmc "))
             {
                 return true;
             }
-            else if (manualRequirementItem.ToLower().StartsWith("SPMC "))
+            else if (manualRequirementItem.ToLower().StartsWith("spmc "))
             {
                 return true;
             }
@@ -325,9 +363,9 @@ namespace SPOPComparisonTool
             return false;
         }
 
-        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color)
+        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color, string txtCleaningRecord)
         {
-            var sourceFile = new FileInfo(txtCleaningRecord.Text);
+            var sourceFile = new FileInfo(txtCleaningRecord);
 
             var outputFilePath = Path.Combine(
         sourceFile.DirectoryName,
@@ -338,10 +376,10 @@ namespace SPOPComparisonTool
                 HighlightList(excelPackage, manualRequirements, color, true);
                 HighlightList(excelPackage, bulletPoints, color, false);
 
-                var outputFile = new FileInfo(
-        Path.Combine(
-            sourceFile.DirectoryName,
-            Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx"));
+                //        var outputFile = new FileInfo(
+                //Path.Combine(
+                //    sourceFile.DirectoryName,
+                //    Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx"));
 
                 excelPackage.SaveAs(new FileInfo(outputFilePath));
             }
@@ -386,7 +424,6 @@ namespace SPOPComparisonTool
             txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
             txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
             txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
-            txtSaveLocation.Text = "D:\\CleaningRecord\\Changes.xlsx";
 #endif
 
             lblHeader.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;
@@ -543,7 +580,99 @@ namespace SPOPComparisonTool
                 variants.Add(Regex.Replace(variant, @"\s*-\s*", " - "));
             }
 
+            // Add parenthesized version of every variant
+            foreach (string variant in variants.ToList())
+            {
+                variants.Add($"({variant})");
+            }
+
             return variants.ToList();
+        }
+
+        public void CreateSPOPBulletExcel(
+    List<(string SPOP, string Bullet)> dataList,
+    List<(string SPOP, string Bullet)> noDataList,
+    string savePath)
+        {
+            var sourceFile = new FileInfo(txtCleaningRecord.Text);
+
+            var outputFilePath = Path.Combine(
+                sourceFile.DirectoryName,
+                Path.GetFileNameWithoutExtension(sourceFile.Name) + "_SPOP_Bullet.xlsx");
+
+            using (var package = new ExcelPackage())
+            {
+                // Data sheet
+                var dataWorksheet = package.Workbook.Worksheets.Add("Data");
+
+                dataWorksheet.Cells[1, 1].Value = "SPOP";
+                dataWorksheet.Cells[1, 2].Value = "Bullet";
+
+                for (int i = 0; i < dataList.Count; i++)
+                {
+                    dataWorksheet.Cells[i + 2, 1].Value = dataList[i].SPOP;
+                    dataWorksheet.Cells[i + 2, 2].Value = dataList[i].Bullet;
+                }
+
+                dataWorksheet.Column(1).AutoFit();
+                dataWorksheet.Column(2).AutoFit();
+
+
+                // NoData sheet
+                var noDataWorksheet = package.Workbook.Worksheets.Add("NoData");
+
+                noDataWorksheet.Cells[1, 1].Value = "SPOP";
+                noDataWorksheet.Cells[1, 2].Value = "Bullet";
+
+                for (int i = 0; i < noDataList.Count; i++)
+                {
+                    noDataWorksheet.Cells[i + 2, 1].Value = noDataList[i].SPOP;
+                    noDataWorksheet.Cells[i + 2, 2].Value = noDataList[i].Bullet;
+                }
+
+                noDataWorksheet.Column(1).AutoFit();
+                noDataWorksheet.Column(2).AutoFit();
+
+
+                // Save
+                package.SaveAs(new FileInfo(outputFilePath));
+            }
+        }
+
+        private bool RangeEndpointsExistInSameSentence(string newVersionBulletText, string manualRequirement)
+        {
+            var rangeMatch = Regex.Match(
+                manualRequirement,
+                @"^(?<min>\d+(?:\.\d+)?)\s*-\s*(?<max>\d+(?:\.\d+)?)\s*(?<unit>mm|cm|m|in|inch|ft|degree|degrees|°)$",
+                RegexOptions.IgnoreCase);
+
+            if (!rangeMatch.Success)
+                return false;
+
+            double min = double.Parse(rangeMatch.Groups["min"].Value);
+            double max = double.Parse(rangeMatch.Groups["max"].Value);
+            string unit = rangeMatch.Groups["unit"].Value;
+
+            // Split into sentences
+            var sentences = Regex.Split( newVersionBulletText, @"(?<=[.!?])\s+(?=[A-Z])");
+
+            foreach (var sentence in sentences)
+            {
+                bool hasMin = Regex.IsMatch(
+                    sentence,
+                    $@"\b{min}\s*{Regex.Escape(unit)}\b",
+                    RegexOptions.IgnoreCase);
+
+                bool hasMax = Regex.IsMatch(
+                    sentence,
+                    $@"\b{max}\s*{Regex.Escape(unit)}\b",
+                    RegexOptions.IgnoreCase);
+
+                if (hasMin && hasMax)
+                    return true;
+            }
+
+            return false;
         }
     }
 }
