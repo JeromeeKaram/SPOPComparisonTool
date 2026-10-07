@@ -270,17 +270,29 @@ namespace SPOPComparisonTool
                         //                        }
                         //#endif
 
-                        if (splitItem.ToLower().Contains("mpa"))
-                        {
+                        bool matched =
+ManualRequirementExistsInNewRevision(newVersionbulletText, variants) ||
+RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem);
 
+                        if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
+                        {
+                            matched = IsEquivalentPressureRange(newVersionbulletText, splitItem);
                         }
 
-                        if (!ManualRequirementExistsInNewRevision(newVersionbulletText, variants) &&
-                            !RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem))
+                        if (!matched && ContainsTimeUnit(splitItem))
+                        {
+                            matched = IsEquivalentTimeRange(newVersionbulletText, splitItem);
+                        }
+
+                        if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
+                        {
+                            matched = IsEquivalentTemperatureRange(newVersionbulletText, splitItem);
+                        }
+
+                        if (!matched)
                         {
                             highLightManualRequirement.Add($"{splitItem}_{item.Row}_7");
                         }
-                        //manualRequirementRow = manualRequirementRow + 1;
                     }
 
                     if (highLightManualRequirement.Any())
@@ -302,6 +314,225 @@ namespace SPOPComparisonTool
             {
                 UseShellExecute = true
             });
+        }
+
+        private bool IsEquivalentTemperatureRange(string websiteText, string excelValue)
+        {
+            var excelMatch = Regex.Match(
+                excelValue,
+                @"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(?:℃|°C|degrees?\s*c)",
+                RegexOptions.IgnoreCase);
+
+            if (!excelMatch.Success)
+                return false;
+
+            double excelMin = double.Parse(excelMatch.Groups[1].Value);
+            double excelMax = double.Parse(excelMatch.Groups[2].Value);
+
+            var matches = Regex.Matches(
+                websiteText,
+                @"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(?:degrees?\s*)?(c|f|℃|°c|°f)",
+                RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                double min = double.Parse(match.Groups[1].Value);
+                double max = double.Parse(match.Groups[2].Value);
+                string unit = match.Groups[3].Value.ToLowerInvariant();
+
+                if (unit == "f" || unit == "°f")
+                {
+                    min = (min - 32) * 5.0 / 9.0;
+                    max = (max - 32) * 5.0 / 9.0;
+                }
+
+                min = Math.Round(min);
+                max = Math.Round(max);
+
+                if (Math.Abs(min - excelMin) <= 1 &&
+                    Math.Abs(max - excelMax) <= 1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsEquivalentTimeRange(string websiteText, string excelValue)
+        {
+            websiteText = ReplaceNumberWords(websiteText);
+
+            var excelMatch = Regex.Match(
+                excelValue,
+                @"(?<start>\d+(?:\.\d+)?)\s*(?<startUnit>min\.?|mins?|minutes?|hr|hrs|hours?)?\s*-\s*(?<end>\d+(?:\.\d+)?)\s*(?<endUnit>min\.?|mins?|minutes?|hr|hrs|hours?)",
+                RegexOptions.IgnoreCase);
+
+            if (!excelMatch.Success)
+                return false;
+
+            string excelStartUnit = excelMatch.Groups["startUnit"].Value;
+            string excelEndUnit = excelMatch.Groups["endUnit"].Value;
+
+            // Example: "5 - 30 min."
+            if (string.IsNullOrWhiteSpace(excelStartUnit))
+                excelStartUnit = excelEndUnit;
+
+            double excelStart = ToMinutes(
+                double.Parse(excelMatch.Groups["start"].Value),
+                excelStartUnit);
+
+            double excelEnd = ToMinutes(
+                double.Parse(excelMatch.Groups["end"].Value),
+                excelEndUnit);
+
+            var websiteMatches = Regex.Matches(
+                websiteText,
+                @"(?<start>\d+(?:\.\d+)?)\s*(?<startUnit>min\.?|mins?|minutes?|hr|hrs|hours?)?\s*(?:-|to)\s*(?<end>\d+(?:\.\d+)?)\s*(?<endUnit>min\.?|mins?|minutes?|hr|hrs|hours?)",
+                RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match match in websiteMatches)
+            {
+                string websiteStartUnit = match.Groups["startUnit"].Value;
+                string websiteEndUnit = match.Groups["endUnit"].Value;
+
+                // Example: "5 - 30 minutes"
+                if (string.IsNullOrWhiteSpace(websiteStartUnit))
+                    websiteStartUnit = websiteEndUnit;
+
+                double websiteStart = ToMinutes(
+                    double.Parse(match.Groups["start"].Value),
+                    websiteStartUnit);
+
+                double websiteEnd = ToMinutes(
+                    double.Parse(match.Groups["end"].Value),
+                    websiteEndUnit);
+
+                if (Math.Abs(excelStart - websiteStart) <= 1 &&
+                    Math.Abs(excelEnd - websiteEnd) <= 1)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private string ReplaceNumberWords(string text)
+        {
+            var replacements = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+    {
+        { "one", "1" },
+        { "two", "2" },
+        { "three", "3" },
+        { "four", "4" },
+        { "five", "5" },
+        { "six", "6" },
+        { "seven", "7" },
+        { "eight", "8" },
+        { "nine", "9" },
+        { "ten", "10" },
+        { "eleven", "11" },
+        { "twelve", "12" },
+        { "thirteen", "13" },
+        { "fourteen", "14" },
+        { "fifteen", "15" },
+        { "sixteen", "16" },
+        { "seventeen", "17" },
+        { "eighteen", "18" },
+        { "nineteen", "19" },
+        { "twenty", "20" }
+    };
+
+            foreach (var item in replacements)
+            {
+                text = Regex.Replace(
+                    text,
+                    $@"\b{item.Key}\b",
+                    item.Value,
+                    RegexOptions.IgnoreCase);
+            }
+
+            return text;
+        }
+
+        private double ToMinutes(double value, string unit)
+        {
+            switch (unit.ToLowerInvariant())
+            {
+                case "hr":
+                case "hrs":
+                case "hour":
+                case "hours":
+                    return value * 60;
+
+                default:
+                    return value;
+            }
+        }
+
+        private bool ContainsTimeUnit(string text)
+        {
+            string lower = text.ToLowerInvariant();
+
+            return lower.Contains("min") ||
+                   lower.Contains("minute") ||
+                   lower.Contains("hr") ||
+                   lower.Contains("hour");
+        }
+
+        private bool IsEquivalentPressureRange(string newVersionText, string excelValue)
+        {
+            // Excel: 0.28 - 0.34 MPa
+
+            // Extract Excel range
+            var excelMatch = Regex.Match(
+                excelValue,
+                @"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*MPa",
+                RegexOptions.IgnoreCase);
+
+            if (!excelMatch.Success)
+                return false;
+
+            double excelMin = double.Parse(excelMatch.Groups[1].Value);
+            double excelMax = double.Parse(excelMatch.Groups[2].Value);
+
+            // Find all pressure ranges in website text
+            var matches = Regex.Matches(
+                newVersionText,
+                @"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*(psi|kpa|mpa)",
+                RegexOptions.IgnoreCase);
+
+            foreach (System.Text.RegularExpressions.Match match in matches)
+            {
+                double min = double.Parse(match.Groups[1].Value);
+                double max = double.Parse(match.Groups[2].Value);
+                string unit = match.Groups[3].Value.ToLower();
+
+                switch (unit)
+                {
+                    case "psi":
+                        min *= 0.00689476;
+                        max *= 0.00689476;
+                        break;
+
+                    case "kpa":
+                        min /= 1000.0;
+                        max /= 1000.0;
+                        break;
+
+                    case "mpa":
+                        break;
+                }
+
+                min = Math.Round(min, 2);
+                max = Math.Round(max, 2);
+
+                if (min == excelMin && max == excelMax)
+                    return true;
+            }
+
+            return false;
         }
 
         private bool IgnoreManualRequirement(string manualRequirementItem)
@@ -654,7 +885,7 @@ namespace SPOPComparisonTool
             string unit = rangeMatch.Groups["unit"].Value;
 
             // Split into sentences
-            var sentences = Regex.Split( newVersionBulletText, @"(?<=[.!?])\s+(?=[A-Z])");
+            var sentences = Regex.Split(newVersionBulletText, @"(?<=[.!?])\s+(?=[A-Z])");
 
             foreach (var sentence in sentences)
             {
