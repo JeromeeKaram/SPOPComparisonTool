@@ -21,5 +21,9 @@ namespace SPOPComparisonTool
         public bool IsNavigateToAnotherSPOP { get; set; } = false;
 
         public string NavigateToSPOPName { get; set; }
+
+        public bool HasSPSinManualRequirement { get; set; } = false;
+
+        public string SPSinManualRequirement { get; set; }
     }
 }

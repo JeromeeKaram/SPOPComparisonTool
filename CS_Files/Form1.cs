@@ -90,6 +90,7 @@ namespace SPOPComparisonTool
 
         private void ReadExcel(string txtOldRevisionLink, string txtNewRevisionLink, string txtCleaningRecord)
         {
+            var workSheetNamesForReader = new List<string>();
             var workSheetNames = new List<string>();
             var changedManualRequirements = new List<Highlight>();
             var changedBulletPoints = new List<Highlight>();
@@ -97,8 +98,6 @@ namespace SPOPComparisonTool
 
             //var noData = new List<(string SPOP, string Bullet)>();
             //var data = new List<(string SPOP, string Bullet)>();
-
-            var reader = GetReader();
 
             using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
             {
@@ -118,49 +117,42 @@ namespace SPOPComparisonTool
                         }
                     }
                 }
+            }
 
+            //Removing the japanese character and inserting space after SPOP for all items
+            for (int i = 0; i < workSheetNames.Count; i++)
+            {
+                workSheetNamesForReader.Add(Regex.Replace(workSheetNames[i], @"^(SPOP)\s*(\d+).*", "$1 $2"));
+            }
+
+            var reader = GetReader(txtOldRevisionLink, txtNewRevisionLink, workSheetNamesForReader);
+
+            using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
+            {
                 foreach (var name in workSheetNames)
                 {
                     var testWorkSheet = package.Workbook.Worksheets[name];
 
-                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    if (testWorkSheet == null)
+                        continue;
 
+                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
-
-                    //if (testWorkSheet.Name != "SPOP209 表") continue; //Comment this line to process all worksheets
-
                     //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP209 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP213 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP218 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP225 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP2 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP211 表") continue; //Comment this line to process all worksheets
 
-                    if (testWorkSheet.Name != "SPOP2 表") continue; //Comment this line to process all worksheets
+                    int rowStartsAt = GetDataStartRow(testWorkSheet);
 
-
-                    //Debug.WriteLine($"Processing sheet: {testWorkSheet.Name}");
-
-                    //if (testWorkSheet.Name.StartsWith("SPOP209"))
-                    //{
-                    //    Debug.WriteLine($"Found SPOP209 sheet: {testWorkSheet.Name}");
-                    //}
-
-                    int rowCount = testWorkSheet.Dimension.Rows;
-
-                    int rowStartsAt = 0;
-
-                    for (int row = 1; row <= testWorkSheet.Dimension.Rows; row++)
+                    if (rowStartsAt == 0)
                     {
-                        string value = testWorkSheet.Cells[row, 2].Text;
-
-                        if (value != null)
-                        {
-                            value = value.Replace("<br>", " ")
-                                         .Replace("<br/>", " ")
-                                         .Replace("<br />", " ");
-
-                            if (value.Contains("Para.") && value.Contains("No."))
-                            {
-                                rowStartsAt = row + 1;
-                                break;
-                            }
-                        }
+                        Debug.WriteLine($"Header not found in {testWorkSheet.Name}");
+                        continue;
                     }
 
                     if (rowStartsAt > 0)
@@ -175,30 +167,34 @@ namespace SPOPComparisonTool
 
                             var manualRequirements = new List<(string Requirement, int Row)>();
                             var procedure = "";
+                            var manualRequirement = "";
 
                             for (var i = startRow; i <= endRow; i++)
                             {
                                 var requirement = testWorkSheet.Cells[i, 7].Text.Trim();
-
-                                if (string.IsNullOrWhiteSpace(requirement) || IgnoreManualRequirement(requirement))
-                                {
-                                    continue;
-                                }
-
                                 manualRequirements.Add((requirement, i));
-                                procedure += testWorkSheet.Cells[i, 3].Text;
+                                procedure += $" {testWorkSheet.Cells[i, 3].Text}";
+                                manualRequirement += $" {requirement}";
                             }
 
                             excelRecord.ManualRequirement = manualRequirements;
                             excelRecord.SPOPName = testWorkSheet.Name;
                             excelRecord.Row = startRow;
 
-                            var match = Regex.Match(procedure, @"^SPOP\s*(\d+)");
+                            var match = Regex.Match(procedure, @"SPOP\s*(\d+)");
 
                             if (match.Success)
                             {
                                 excelRecord.IsNavigateToAnotherSPOP = true;
                                 excelRecord.NavigateToSPOPName = $"SPOP {match.Groups[1].Value}";
+                            }
+
+                            var matchSPS = Regex.Match(manualRequirement, @"SPS\s*(\d+-\d+)");
+
+                            if (matchSPS.Success)
+                            {
+                                excelRecord.HasSPSinManualRequirement = true;
+                                excelRecord.SPSinManualRequirement = $"SPS {match.Groups[1].Value}";
                             }
 
                             // Text of the merged B cell
@@ -216,19 +212,23 @@ namespace SPOPComparisonTool
             {
                 if (manualRequirement.BulletPoint != "1.A.") continue;
 
-                string spaceBetweenSPOPandNumber = "";
+                var spaceBetweenSPOPandNumber = "";
+                var bulletPoint = "";
 
                 if (manualRequirement.IsNavigateToAnotherSPOP)
                 {
                     spaceBetweenSPOPandNumber = manualRequirement.NavigateToSPOPName;
+                    bulletPoint = "1.A";
+                    //continue;
                 }
                 else
                 {
                     string withoutJapanese = manualRequirement.SPOPName.Split(' ')[0];
                     spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+                    bulletPoint = manualRequirement.BulletPoint;
                 }
 
-                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, manualRequirement.BulletPoint);
+                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
 
                 if (comparisonResult == null)
                 {
@@ -249,44 +249,56 @@ namespace SPOPComparisonTool
                     changedBulletPoints.Add(highLight);
                 }
 
-                if (comparisonResult != null && comparisonResult.m_eCompareType != CompareType.SAME)
+                //if (comparisonResult.m_eCompareType != CompareType.SAME)
                 {
-                    //var newRevisionBulletData = comparisonResult.m_new;
-                    var newVersionbulletText = comparisonResult.m_new.m_sFullText;
+                    //var newVersionbulletText = comparisonResult.m_new.m_sFullText;
 
                     var highLightManualRequirement = new List<string>();
 
-                    //var manualRequirementRow = manualRequirement.Row;
+                    var procedures = comparisonResult.m_new.m_oParent;
+                    var matched = false;
 
                     foreach (var item in manualRequirement.ManualRequirement)
                     {
-                        var splitItem = item.Requirement.Contains(":") ? item.Requirement.Split(':')[1].Trim() : item.Requirement.Trim();
-                        var variants = GetVariants(splitItem);
-
-                        //#if DEBUG
-                        //                        foreach(var v in variants)
-                        //                        {
-                        //                            System.Diagnostics.Debug.WriteLine($"'{v}'");
-                        //                        }
-                        //#endif
-
-                        bool matched =
-ManualRequirementExistsInNewRevision(newVersionbulletText, variants) ||
-RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem);
-
-                        if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
+                        if (string.IsNullOrWhiteSpace(item.Requirement) || IgnoreManualRequirement(item.Requirement))
                         {
-                            matched = IsEquivalentPressureRange(newVersionbulletText, splitItem);
+                            continue;
                         }
 
-                        if (!matched && ContainsTimeUnit(splitItem))
-                        {
-                            matched = IsEquivalentTimeRange(newVersionbulletText, splitItem);
-                        }
+                        var parts = item.Requirement.Split(new[] { ':' }, 2);
 
-                        if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
+                        var splitItem = parts.Length == 2
+                            ? parts[1].Trim()
+                            : item.Requirement.Trim();
+
+                        foreach(var procedureItem in procedures.m_lstChilds) 
                         {
-                            matched = IsEquivalentTemperatureRange(newVersionbulletText, splitItem);
+                            var variants = GetVariants(splitItem);
+
+                            var procedureText = procedureItem.m_sFullText;
+
+                            matched = ManualRequirementExistsInNewRevision(procedureText, variants) ||
+    RangeEndpointsExistInSameSentence(procedureText, splitItem);
+
+                            if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
+                            {
+                                matched = IsEquivalentPressureRange(procedureText, splitItem);
+                            }
+
+                            if (!matched && ContainsTimeUnit(splitItem))
+                            {
+                                matched = IsEquivalentTimeRange(procedureText, splitItem);
+                            }
+
+                            if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
+                            {
+                                matched = IsEquivalentTemperatureRange(procedureText, splitItem);
+                            }
+
+                            if (matched)
+                            {
+                                break; // go to next requirement
+                            }
                         }
 
                         if (!matched)
@@ -314,6 +326,28 @@ RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem);
             {
                 UseShellExecute = true
             });
+        }
+
+        private static int GetDataStartRow(ExcelWorksheet testWorkSheet)
+        {
+            for (int row = 1; row <= testWorkSheet.Dimension.Rows; row++)
+            {
+                string value = testWorkSheet.Cells[row, 2].Text;
+
+                if (!string.IsNullOrEmpty(value))
+                {
+                    value = value.Replace("<br>", " ")
+                                 .Replace("<br/>", " ")
+                                 .Replace("<br />", " ");
+
+                    if (value.Contains("Para.") && value.Contains("No."))
+                    {
+                        return row + 1;
+                    }
+                }
+            }
+
+            return 0;
         }
 
         private bool IsEquivalentTemperatureRange(string websiteText, string excelValue)
@@ -713,10 +747,10 @@ RangeEndpointsExistInSameSentence(newVersionbulletText, splitItem);
         }
 
 
-        private SPMReader GetReader()
+        private SPMReader GetReader(string oldRevisionLink, string newRevisionLink, List<string> lstSPOPs)
         {
             var reader = new SPMReader();
-            reader.ReadSPM(txtOldRevisionLink.Text, txtNewRevisionLink.Text, txtCleaningRecord.Text);
+            reader.ReadSPM(oldRevisionLink, newRevisionLink, lstSPOPs);
             return reader;
         }
 

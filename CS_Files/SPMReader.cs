@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml;
@@ -20,14 +21,14 @@ namespace Cleaning_Records_Sheet
         {
             try
             {
-                string step1 = step.Replace(".", "").Replace(".(", "").Replace(")", "").Trim();
+                string step1 = Regex.Replace(step, @"[().]", "");
                 if (dtResults.ContainsKey(spop))
                 {
                     foreach(ComparisonResult v in dtResults[spop])
                     {
                         if(v.m_old != null)
                         {
-                            if(v.m_old.m_sCompleteBullet == step1)
+                            if(v.m_old.m_sCompleteBullet.ToLower() == step1.ToLower())
                             {
                                 return v;
                             }
@@ -41,14 +42,35 @@ namespace Cleaning_Records_Sheet
             }
             return null;
         }
-        public void ReadSPM(string sOldURL, string sNewUrl, string sXlPath)
+        public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops)
         {
             EngineManualReader.SeleniumReader oseleniumReader = new EngineManualReader.SeleniumReader();
             try
             {
                 //------------- READ Cleaning ticket excel file to find the sheet names -------
                 //Use epplus to read the data
-                List<string> lstSpops = ReadSPOPFromCleaningSheet(sXlPath);
+                //List<string> lstSpops = ReadSPOPFromCleaningSheet(sXlPath);
+
+                //------------- READ Cleaning ticket excel file to find the sheet names -------
+                //Use epplus to read the data
+                //List<string> lstSpops = ReadSPOPFromCleaningSheet(sXlPath);
+
+                //upate spop text
+                for (int i = 0; i < lstSpops.Count; i++)
+                {
+                    string number = Regex.Replace(lstSpops[i], @"[^0-9]", "");
+                    if (number.Length > 0)
+                    {
+                        lstSpops[i] = "SPOP " + number;
+                    }
+                    else
+                    {
+                        lstSpops.RemoveAt(i);
+                        i--;
+                    }
+                }
+                //Remove duplicates 
+                lstSpops = lstSpops.Distinct().ToList();
 
 
                 //------------- READ the Engine Manual data from Old Revision --- 
@@ -94,6 +116,7 @@ namespace Cleaning_Records_Sheet
                     findProc = oo; break;
                 }
             }
+            findProc = null;
             //If found update the labels and main procedure
             if (findProc != null)
             {
