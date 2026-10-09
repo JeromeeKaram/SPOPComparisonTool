@@ -1,6 +1,7 @@
 ﻿using EngineManualReader;
 using HtmlAgilityPack;
 using OfficeOpenXml;
+using OfficeOpenXml.FormulaParsing.Excel.Functions.Information;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
 using System;
 using System.Collections.Generic;
@@ -16,21 +17,26 @@ namespace Cleaning_Records_Sheet
 {
     class SPMReader
     {
+        Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)> dtProcedures = new Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)>();
+        Dictionary<string, string> dtDMC = new Dictionary<string, string>();
         Dictionary<string, List<ComparisonResult>> dtResults = new Dictionary<string, List<ComparisonResult>>();
         public ComparisonResult GetStep(string spop, string step)
         {
             try
             {
-                string step1 = Regex.Replace(step, @"[().]", "");
-                if (dtResults.ContainsKey(spop))
+                if (step.Length > 0)
                 {
-                    foreach(ComparisonResult v in dtResults[spop])
+                    string step1 = Regex.Replace(step, @"[().]", "");
+                    if (dtResults.ContainsKey(spop))
                     {
-                        if(v.m_old != null)
+                        foreach (ComparisonResult v in dtResults[spop])
                         {
-                            if(v.m_old.m_sCompleteBullet.ToLower() == step1.ToLower())
+                            if (v.m_old != null)
                             {
-                                return v;
+                                if (v.m_old.m_sCompleteBullet.ToLower() == step1.ToLower())
+                                {
+                                    return v;
+                                }
                             }
                         }
                     }
@@ -42,15 +48,53 @@ namespace Cleaning_Records_Sheet
             }
             return null;
         }
-        public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops)
+        public EngineManualReader.ProcedureInfo GetProcedure(string spop, string type)
+        {
+            try
+            {
+                if (dtProcedures.ContainsKey(spop))
+                {
+                    if (type.ToUpper() == "OLD")
+                    {
+                        return dtProcedures[spop].Item1;
+                    }
+                    else
+                    {
+                        return dtProcedures[spop].Item2;
+                    }
+                }
+            }
+            catch (Exception ee)
+            {
+                Utility.WriteErrorLog(ee);
+            }
+            return null;
+        }
+        public bool IsDMCSame(string spop)
+        {
+            try
+            {
+                if (dtResults.ContainsKey(spop))
+                {
+                    int cnt = 0;
+                    foreach (ComparisonResult v in dtResults[spop])
+                    {
+                        if (v.m_eCompareType == CompareType.SAME) cnt = cnt + 1;
+                    }
+                    if (cnt == dtResults[spop].Count) return true;
+                }
+            }
+            catch (Exception ee)
+            {
+                Utility.WriteErrorLog(ee);
+            }
+            return false;
+        }
+        public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops)//string sXlPath)
         {
             EngineManualReader.SeleniumReader oseleniumReader = new EngineManualReader.SeleniumReader();
             try
             {
-                //------------- READ Cleaning ticket excel file to find the sheet names -------
-                //Use epplus to read the data
-                //List<string> lstSpops = ReadSPOPFromCleaningSheet(sXlPath);
-
                 //------------- READ Cleaning ticket excel file to find the sheet names -------
                 //Use epplus to read the data
                 //List<string> lstSpops = ReadSPOPFromCleaningSheet(sXlPath);
@@ -72,14 +116,14 @@ namespace Cleaning_Records_Sheet
                 //Remove duplicates 
                 lstSpops = lstSpops.Distinct().ToList();
 
-
                 //------------- READ the Engine Manual data from Old Revision --- 
                 foreach (string spop in lstSpops)
                 {
                     SolrSearch oo = new SolrSearch();
-                    string dmc =  oo.SearchTask(sOldURL, spop);
+                    string dmc = oo.SearchTask(sOldURL, spop);
                     if (dmc.Length > 0)
                     {
+                        dtDMC.Add(spop, dmc);
                         string url = sOldURL + @"/" + dmc + ".html";
                         EngineManualReader.EMReader emReader = new EngineManualReader.EMReader();
                         EngineManualReader.ProcedureInfo oprocOld = DefineProcedure(emReader.Read(url, "old", oseleniumReader));
@@ -88,10 +132,12 @@ namespace Cleaning_Records_Sheet
                         emReader = new EngineManualReader.EMReader();
                         EngineManualReader.ProcedureInfo oprocNew = DefineProcedure(emReader.Read(url, "new", oseleniumReader));
 
+
                         //compare 
                         ComparisonHelper comHelper = new ComparisonHelper();
-                        List<ComparisonResult>  lstCompares = comHelper.Compare(oprocOld, oprocNew);
+                        List<ComparisonResult> lstCompares = comHelper.Compare(oprocOld, oprocNew);
                         dtResults.Add(spop, lstCompares);
+                        dtProcedures.Add(spop, (oprocOld, oprocNew));
                     }
                 }
             }
@@ -247,12 +293,12 @@ namespace Cleaning_Records_Sheet
                     if (oXlWorkSheet.Dimension == null) continue;
                     if (oXlWorkSheet.Hidden == eWorkSheetHidden.Visible)
                     {
-                        if(oXlWorkSheet.Name.StartsWith("SPOP"))
+                        if (oXlWorkSheet.Name.StartsWith("SPOP"))
                         {
-                            string num = "SPOP " +  Utility.SplitString(oXlWorkSheet.Name.Replace("SPOP", ""), " ")[0];
+                            string num = "SPOP " + Utility.SplitString(oXlWorkSheet.Name.Replace("SPOP", ""), " ")[0];
                             if (lstSpops.Contains(num) == false)
                             {
-                                //if (num == "SPOP 15")
+                                if (num == "SPOP 15")
                                     lstSpops.Add(num);
                             }
                         }

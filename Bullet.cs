@@ -6,9 +6,9 @@ using System.Threading.Tasks;
 
 namespace SPOPComparisonTool
 {
-    internal class ExcelData
+    internal class Bullet
     {
-        public ExcelData() { }
+        public Bullet() { }
 
         public string SPOPName { get; set; }
 

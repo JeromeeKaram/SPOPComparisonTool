@@ -54,7 +54,7 @@
             // txtNewRevisionLink
             // 
             this.txtNewRevisionLink.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtNewRevisionLink.Location = new System.Drawing.Point(182, 53);
+            this.txtNewRevisionLink.Location = new System.Drawing.Point(182, 62);
             this.txtNewRevisionLink.Name = "txtNewRevisionLink";
             this.txtNewRevisionLink.Size = new System.Drawing.Size(563, 22);
             this.txtNewRevisionLink.TabIndex = 17;
@@ -63,7 +63,7 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label3.Location = new System.Drawing.Point(36, 57);
+            this.label3.Location = new System.Drawing.Point(36, 66);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(129, 14);
             this.label3.TabIndex = 16;
@@ -73,7 +73,7 @@
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label2.Location = new System.Drawing.Point(44, 92);
+            this.label2.Location = new System.Drawing.Point(44, 101);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(118, 14);
             this.label2.TabIndex = 14;
@@ -81,7 +81,7 @@
             // 
             // btnBrowseDocument
             // 
-            this.btnBrowseDocument.Location = new System.Drawing.Point(677, 88);
+            this.btnBrowseDocument.Location = new System.Drawing.Point(677, 97);
             this.btnBrowseDocument.Name = "btnBrowseDocument";
             this.btnBrowseDocument.Size = new System.Drawing.Size(68, 22);
             this.btnBrowseDocument.TabIndex = 12;
@@ -94,7 +94,7 @@
             this.btnRun.BackColor = System.Drawing.SystemColors.Highlight;
             this.btnRun.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnRun.ForeColor = System.Drawing.Color.White;
-            this.btnRun.Location = new System.Drawing.Point(329, 152);
+            this.btnRun.Location = new System.Drawing.Point(329, 137);
             this.btnRun.Name = "btnRun";
             this.btnRun.Size = new System.Drawing.Size(185, 36);
             this.btnRun.TabIndex = 10;
@@ -112,16 +112,16 @@
             this.groupBox1.Controls.Add(this.btnBrowseDocument);
             this.groupBox1.Controls.Add(this.txtCleaningRecord);
             this.groupBox1.Controls.Add(this.btnRun);
-            this.groupBox1.Location = new System.Drawing.Point(28, 88);
+            this.groupBox1.Location = new System.Drawing.Point(45, 88);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(767, 201);
+            this.groupBox1.Size = new System.Drawing.Size(767, 187);
             this.groupBox1.TabIndex = 18;
             this.groupBox1.TabStop = false;
             // 
             // txtOldRevisionLink
             // 
             this.txtOldRevisionLink.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtOldRevisionLink.Location = new System.Drawing.Point(182, 22);
+            this.txtOldRevisionLink.Location = new System.Drawing.Point(182, 31);
             this.txtOldRevisionLink.Name = "txtOldRevisionLink";
             this.txtOldRevisionLink.Size = new System.Drawing.Size(563, 22);
             this.txtOldRevisionLink.TabIndex = 19;
@@ -130,7 +130,7 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label1.Location = new System.Drawing.Point(40, 25);
+            this.label1.Location = new System.Drawing.Point(40, 34);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(122, 14);
             this.label1.TabIndex = 18;
@@ -140,7 +140,7 @@
             // 
             this.txtCleaningRecord.Enabled = false;
             this.txtCleaningRecord.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtCleaningRecord.Location = new System.Drawing.Point(182, 88);
+            this.txtCleaningRecord.Location = new System.Drawing.Point(182, 97);
             this.txtCleaningRecord.Name = "txtCleaningRecord";
             this.txtCleaningRecord.Size = new System.Drawing.Size(489, 22);
             this.txtCleaningRecord.TabIndex = 11;
@@ -159,7 +159,7 @@
             // 
             this.lblHeader.AutoSize = true;
             this.lblHeader.Font = new System.Drawing.Font("Verdana", 15F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.lblHeader.Location = new System.Drawing.Point(70, 56);
+            this.lblHeader.Location = new System.Drawing.Point(88, 56);
             this.lblHeader.Name = "lblHeader";
             this.lblHeader.Size = new System.Drawing.Size(664, 25);
             this.lblHeader.TabIndex = 16;
@@ -219,9 +219,9 @@
             // 
             // progressBar1
             // 
-            this.progressBar1.Location = new System.Drawing.Point(67, 295);
+            this.progressBar1.Location = new System.Drawing.Point(45, 293);
             this.progressBar1.Name = "progressBar1";
-            this.progressBar1.Size = new System.Drawing.Size(706, 20);
+            this.progressBar1.Size = new System.Drawing.Size(767, 20);
             this.progressBar1.TabIndex = 14;
             // 
             // Form1
