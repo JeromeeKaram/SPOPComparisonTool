@@ -25,5 +25,7 @@ namespace SPOPComparisonTool
         public bool HasSPSinManualRequirement { get; set; } = false;
 
         public string SPSinManualRequirement { get; set; }
+
+        public string ProcedureText { get; set; }
     }
 }

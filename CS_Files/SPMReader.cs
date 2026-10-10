@@ -90,6 +90,15 @@ namespace Cleaning_Records_Sheet
             }
             return false;
         }
+
+        public string GetDMC(string spop)
+        {
+            if (dtDMC.ContainsKey(spop))
+            {
+                return dtDMC[spop];
+            }
+            return "";
+        }
         public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops)//string sXlPath)
         {
             EngineManualReader.SeleniumReader oseleniumReader = new EngineManualReader.SeleniumReader();

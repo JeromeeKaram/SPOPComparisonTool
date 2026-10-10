@@ -1,6 +1,7 @@
 ﻿using Cleaning_Records_Sheet;
 using Cleaning_Records_Sheet.About;
 using EngineManualReader;
+using HtmlAgilityPack;
 using OfficeOpenXml;
 using OfficeOpenXml.FormulaParsing.Excel.Functions.RefAndLookup;
 using OfficeOpenXml.Style;
@@ -12,6 +13,8 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.Remoting.Metadata.W3cXsd2001;
+using System.Security.Policy;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -98,6 +101,7 @@ namespace SPOPComparisonTool
 
             //var noData = new List<(string SPOP, string Bullet)>();
             //var data = new List<(string SPOP, string Bullet)>();
+            var spmReader = new SPMReader();
 
             using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
             {
@@ -105,7 +109,7 @@ namespace SPOPComparisonTool
 
                 foreach (var worksheet in package.Workbook.Worksheets)
                 {
-                    if (worksheet.Name.Contains("SPOP213")) continue;
+                    if (worksheet.Name.Contains("SPOP213")) continue; //Ignore this worksheet （Not used in Tsurugashima factory)
 
                     var match = Regex.Match(worksheet.Name, @"^(SPOP\d+)");
 
@@ -152,9 +156,9 @@ namespace SPOPComparisonTool
                     var matchSpopName = Regex.Match(testWorkSheet.Name, @"SPOP\s*(\d+)", RegexOptions.IgnoreCase);
                     var spopName = matchSpopName.Success ? $"SPOP {matchSpopName.Groups[1].Value}" : testWorkSheet.Name;
 
-                    var spopsChanged = SPOPSChanged(spopName, reader);
+                    var isDMCSame = reader.IsDMCSame(spopName);
 
-                    if (!spopsChanged)
+                    if (isDMCSame)
                     {
                         Debug.WriteLine($"No changes in {testWorkSheet.Name}");
                         continue;
@@ -179,22 +183,23 @@ namespace SPOPComparisonTool
                             var endRow = mergedRange.EndRow;
 
                             var manualRequirements = new List<(string Requirement, int Row)>();
-                            var procedure = "";
+                            var procedureText = "";
                             var manualRequirement = "";
 
                             for (var i = startRow; i <= endRow; i++)
                             {
                                 var requirement = testWorkSheet.Cells[i, 7].Text.Trim();
                                 manualRequirements.Add((requirement, i));
-                                procedure += $" {testWorkSheet.Cells[i, 3].Text}";
+                                procedureText += $" {testWorkSheet.Cells[i, 3].Text}";
                                 manualRequirement += $" {requirement}";
                             }
 
                             excelRecord.ManualRequirement = manualRequirements;
                             excelRecord.SPOPName = testWorkSheet.Name;
                             excelRecord.Row = startRow;
+                            excelRecord.ProcedureText = procedureText;
 
-                            var match = Regex.Match(procedure, @"SPOP\s*(\d+)");
+                            var match = Regex.Match(procedureText, @"SPOP\s*(\d+)");
 
                             if (match.Success)
                             {
@@ -224,54 +229,197 @@ namespace SPOPComparisonTool
 
             var bullets = excelData.Where(ed => ed.ManualRequirement != null && ed.ManualRequirement.Any()).ToList();
 
-            foreach (var bullet in bullets)
+            var bulletsWithDifferentSPOP = bullets.Where(b => b.IsNavigateToAnotherSPOP).ToList();
+            var bulletsWithoutDifferentSPOP = bullets.Where(b => !b.IsNavigateToAnotherSPOP).ToList();
+
+            var changedManualRequirementsWithDifferentSPOP = ProcessBulletsWithDifferentSPOP(bulletsWithDifferentSPOP, reader, txtNewRevisionLink);
+            //var changedManualRequirementsWithoutDifferentSPOP = ProcessBulletsWithoutDifferentSPOP(bulletsWithoutDifferentSPOP, reader);
+
+            var outputFilePath = HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow, txtCleaningRecord);
+
+            //CreateSPOPBulletExcel(data, noData, txtCleaningRecord);
+            // Open the Excel file
+            Process.Start(new ProcessStartInfo(outputFilePath)
             {
-                if (bullet.BulletPoint != "1.D") continue;
+                UseShellExecute = true
+            });
+        }
 
-                var spaceBetweenSPOPandNumber = "";
-                var bulletPoint = "";
+        //        private (List<Highlight> changedManualRequirements, List<Highlight> changedBulletPoints) ProcessBulletsWithoutDifferentSPOP(List<Bullet> bulletsWithoutDifferentSPOP, SPMReader reader)
+        //        {
+        //            var changedBulletPoints = new List<Highlight>();
+        //            var changedManualRequirements = new List<Highlight>();
 
-                if (bullet.IsNavigateToAnotherSPOP)
-                {
-                    spaceBetweenSPOPandNumber = bullet.NavigateToSPOPName;
-                    bulletPoint = "2.A";
-                    //continue;
-                }
-                else
-                {
-                    string withoutJapanese = bullet.SPOPName.Split(' ')[0];
-                    spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
-                    bulletPoint = bullet.BulletPoint;
-                }
+        //            foreach (var bullet in bulletsWithoutDifferentSPOP)
+        //            {
+        //                if (bullet.BulletPoint != "1.A.") continue;
 
-                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
+        //                var spaceBetweenSPOPandNumber = "";
+        //                var bulletPoint = "";
 
-                if (comparisonResult == null)
-                {
-                    //noData.Add((record.SPOPName, record.BulletPoint));
-                    continue;
-                }
+        //                if (bullet.IsNavigateToAnotherSPOP)
+        //                {
+        //                    spaceBetweenSPOPandNumber = bullet.NavigateToSPOPName;
+        //                }
+        //                else
+        //                {
+        //                    string withoutJapanese = bullet.SPOPName.Split(' ')[0];
+        //                    spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+        //                    bulletPoint = bullet.BulletPoint;
+        //                }
+
+        //                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
+
+        //                if (comparisonResult == null)
+        //                {
+        //                    //noData.Add((record.SPOPName, record.BulletPoint));
+        //                    continue;
+        //                }
+        //                //data.Add((record.SPOPName, record.BulletPoint));
+
+        //                var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
+        //                var bulletInfoOld = comparisonResult.m_old.m_sCompleteBullet;
+
+        //                if (!string.Equals(bulletInfoOld, bulletInfoNew))
+        //                {
+        //                    var highLight = new Highlight();
+        //                    highLight.Row = bullet.Row;
+        //                    highLight.SPOPName = bullet.SPOPName;
+        //                    highLight.Columns2Highlight = new List<string> { $"{bullet.BulletPoint}_{bullet.Row}_2" };
+        //                    changedBulletPoints.Add(highLight);
+        //                }
+
+        //                //if (comparisonResult.m_eCompareType != CompareType.SAME)
+        //                {
+        //                    var newVersionbulletText1 = comparisonResult.m_new.m_sFullText;
+
+        //                    var highLightManualRequirement = new List<string>();
+
+        //                    //var procedureSteps = comparisonResult.m_new.m_oParent.m_lstChilds;
+
+        //                    var validManualRequirements = new List<(string Requirement, int Row)>();
+
+        //                    foreach (var item in bullet.ManualRequirement)
+        //                    {
+        //                        if (string.IsNullOrWhiteSpace(item.Requirement) || IgnoreManualRequirement(item.Requirement))
+        //                        {
+        //                            continue;
+        //                        }
+
+        //                        validManualRequirements.Add(item);
+        //                    }
+
+        //                    var procedureSteps = reader.GetProcedure("", "New");
+        //                    var linesFromProcedure = GetProcedureLines(validManualRequirements, procedureSteps.m_lstChilds, bullet.SPSinManualRequirement);
+
+        //                    foreach (var item in validManualRequirements)
+        //                    {
+        //                        var parts = item.Requirement.Split(new[] { ':' }, 2);
+
+        //                        var splitItem = parts.Length == 2
+        //                            ? parts[1].Trim()
+        //                            : item.Requirement.Trim();
+
+        //                        var variants = GetVariants(splitItem);
+
+        //                        bool matched = false;
+
+        //                        foreach (var procedure in linesFromProcedure)
+        //                        {
+        //                            matched = ManualRequirementExistsInNewRevision(procedure, variants) ||
+        //RangeEndpointsExistInSameSentence(procedure, splitItem);
+
+        //                            if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
+        //                            {
+        //                                matched = IsEquivalentPressureRange(procedure, splitItem);
+        //                            }
+
+        //                            if (!matched && ContainsTimeUnit(splitItem))
+        //                            {
+        //                                matched = IsEquivalentTimeRange(procedure, splitItem);
+        //                            }
+
+        //                            if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
+        //                            {
+        //                                matched = IsEquivalentTemperatureRange(procedure, splitItem);
+        //                            }
+
+        //                            if (matched)
+        //                            {
+        //                                break;
+        //                            }
+        //                        }
+
+        //                        if (!matched)
+        //                        {
+        //                            highLightManualRequirement.Add($"{splitItem}_{item.Row}_7");
+        //                        }
+        //                    }
+
+        //                    if (highLightManualRequirement.Any())
+        //                    {
+        //                        var highLight = new Highlight();
+        //                        highLight.Row = bullet.Row;
+        //                        highLight.SPOPName = bullet.SPOPName;
+        //                        highLight.Columns2Highlight = highLightManualRequirement;
+        //                        changedManualRequirements.Add(highLight);
+        //                    }
+        //                }
+        //            }
+
+        //            return (changedManualRequirements, changedBulletPoints);
+        //        }
+
+        private List<Highlight> ProcessBulletsWithDifferentSPOP(List<Bullet> bulletsWithDifferentSPOP, SPMReader reader, string newRevisionLink)
+        {
+            var changedManualRequirements = new List<Highlight>();
+
+            foreach (var bullet in bulletsWithDifferentSPOP)
+            {
+                if (bullet.BulletPoint != "1.A.") continue;
+
+                //var spaceBetweenSPOPandNumber = "";
+                //var bulletPoint = "";
+
+                //if (bullet.IsNavigateToAnotherSPOP)
+                //{
+                //    spaceBetweenSPOPandNumber = bullet.NavigateToSPOPName;
+                //}
+                //else
+                //{
+                //    string withoutJapanese = bullet.SPOPName.Split(' ')[0];
+                //    spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
+                //    bulletPoint = bullet.BulletPoint;
+                //}
+
+                //var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
+
+                //if (comparisonResult == null)
+                //{
+                //    //noData.Add((record.SPOPName, record.BulletPoint));
+                //    continue;
+                //}
                 //data.Add((record.SPOPName, record.BulletPoint));
 
-                var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
-                var bulletInfoOld = comparisonResult.m_old.m_sCompleteBullet;
+                //var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
+                //var bulletInfoOld = comparisonResult.m_old.m_sCompleteBullet;
 
-                if (!string.Equals(bulletInfoOld, bulletInfoNew))
-                {
-                    var highLight = new Highlight();
-                    highLight.Row = bullet.Row;
-                    highLight.SPOPName = bullet.SPOPName;
-                    highLight.Columns2Highlight = new List<string> { $"{bullet.BulletPoint}_{bullet.Row}_2" };
-                    changedBulletPoints.Add(highLight);
-                }
+                //if (!string.Equals(bulletInfoOld, bulletInfoNew))
+                //{
+                //    var highLight = new Highlight();
+                //    highLight.Row = bullet.Row;
+                //    highLight.SPOPName = bullet.SPOPName;
+                //    highLight.Columns2Highlight = new List<string> { $"{bullet.BulletPoint}_{bullet.Row}_2" };
+                //    changedBulletPoints.Add(highLight);
+                //}
 
                 //if (comparisonResult.m_eCompareType != CompareType.SAME)
                 {
-                    var newVersionbulletText1 = comparisonResult.m_new.m_sFullText;
+                    //var newVersionbulletText1 = comparisonResult.m_new.m_sFullText;
 
                     var highLightManualRequirement = new List<string>();
 
-                    var procedureSteps = comparisonResult.m_new.m_oParent.m_lstChilds;
+                    //var procedureSteps = comparisonResult.m_new.m_oParent.m_lstChilds;
 
                     var validManualRequirements = new List<(string Requirement, int Row)>();
 
@@ -285,7 +433,10 @@ namespace SPOPComparisonTool
                         validManualRequirements.Add(item);
                     }
 
-                    var linesFromProcedure = GetProcedureLines(validManualRequirements, procedureSteps, bullet.SPSinManualRequirement);
+                    var str = reader.GetDMC(bullet.NavigateToSPOPName);
+
+                    //var procedureSteps = reader.GetProcedure(bullet.NavigateToSPOPName, "New");
+                    var linesFromProcedure = GetProcedureLines(reader, bullet, validManualRequirements, newRevisionLink);
 
                     foreach (var item in validManualRequirements)
                     {
@@ -342,46 +493,111 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
                 }
             }
 
-            var outputFilePath = HighlightChanges(changedManualRequirements, changedBulletPoints, Color.Yellow, txtCleaningRecord);
-
-            //CreateSPOPBulletExcel(data, noData, txtCleaningRecord);
-            // Open the Excel file
-            Process.Start(new ProcessStartInfo(outputFilePath)
-            {
-                UseShellExecute = true
-            });
+            return changedManualRequirements;
         }
 
-        private List<string> GetProcedureLines(List<(string Requirement, int Row)> validManualRequirements, List<ProcedureInfo> procedures, string sps)
+        private List<string> GetProcedureLines(SPMReader reader, Bullet bullet,
+            List<(string Requirement, int Row)> validManualRequirements, string newRevisionLink)
         {
-            var allMatchingSentences = new List<string>();
+            //open link and read the lines
 
-            if (!string.IsNullOrEmpty(sps))
+            var spopLink = reader.GetDMC(bullet.NavigateToSPOPName);
+            if (string.IsNullOrEmpty(spopLink)) return new List<string>();
+
+            var web = new HtmlWeb();
+            var doc = web.Load($"{newRevisionLink}/{spopLink}.html");
+
+            var stepLevel0 = doc.DocumentNode.SelectSingleNode("//ol[@class='steplevel0']");
+            var secondLi = stepLevel0?.SelectSingleNode("./li[2]");
+
+            string websiteText = HtmlEntity.DeEntitize(doc.DocumentNode.InnerText);
+
+            var allMatchingSentences = new List<string>();
+            //var procedures = new List<string>();
+
+            (var acqCleanerSolnTemperatureList, var soakTimeList, var allInOne) = GetChildBullets(doc, bullet.ProcedureText);
+
             {
                 foreach (var req in validManualRequirements)
                 {
+                    var temperatureSentences = new List<string>();
+                    var durationSentences = new List<string>();
+
                     var isTemperature = Regex.IsMatch(req.Requirement, @"℃|°\s*C|degrees\s*C", RegexOptions.IgnoreCase);
 
                     if (isTemperature)
                     {
-                        var temperatureSentences = procedures
-        .Where(p => Regex.IsMatch(p.m_sFullText, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).Select(p => p.m_sFullText)
-        .ToList();
+                        if (bullet.ProcedureText.ToLower().Contains("immersion"))
+                        {
+                            if (bullet.HasSPSinManualRequirement)
+                            {
+                                var spsCompliant = acqCleanerSolnTemperatureList.Where
+                                     (p => p.ToLower().Contains(bullet.SPSinManualRequirement.ToLower())).Select(p => p).ToList();
+
+                                temperatureSentences = spsCompliant.Where(p => Regex.IsMatch(p, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).
+                                      Select(p => p).ToList();
+                            }
+                            else
+                            {
+                                temperatureSentences = acqCleanerSolnTemperatureList.Where(p => Regex.IsMatch(p, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).
+                                      Select(p => p).ToList();
+                            }
+                        }
+                        else
+                        {
+                            temperatureSentences = allInOne.Where(p => Regex.IsMatch(p, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).
+                                  Select(p => p).ToList();
+                        }
+
                         allMatchingSentences.AddRange(temperatureSentences);
+                        continue;
+                    }
+
+                    var isDuration = ContainsTimeUnit(req.Requirement);
+
+                    if (isDuration)
+                    {
+                        if (bullet.ProcedureText.ToLower().Contains("immersion"))
+                        {
+                            if (bullet.HasSPSinManualRequirement)
+                            {
+                                var spsCompliant = soakTimeList
+        .Where(p => p.ToLower().Contains(bullet.SPSinManualRequirement.ToLower()))
+        .ToList();
+                                if (!spsCompliant.Any())
+                                {
+                                    durationSentences = soakTimeList.Where(p => Regex.IsMatch(p,
+        @"For all other solutions", RegexOptions.IgnoreCase)).ToList();
+                                }
+                            }
+                            else
+                            {
+                                durationSentences = soakTimeList.Where(p => Regex.IsMatch(p, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).
+                                                                      Select(p => p).ToList();
+                            }
+                        }
+                        else
+                        {
+                            durationSentences = allInOne.Where(p => Regex.IsMatch(p, @"°\s*[FC]|℃|℉|degrees\s*[FC]", RegexOptions.IgnoreCase)).
+                                  Select(p => p).ToList();
+                        }
+                        allMatchingSentences.AddRange(durationSentences);
+                        continue;
                     }
 
                     var isPressure = req.Requirement.Contains("Mpa") ? true : false;
 
                     if (isPressure)
                     {
-                        var pressureSentences = procedures
+                        var pressureSentences = allInOne
     .Where(p => Regex.IsMatch(
-        p.m_sFullText,
+        p,
         @"\bpsi\b|\bkpa\b",
         RegexOptions.IgnoreCase))
-    .Select(p => p.m_sFullText)
+    .Select(p => p)
     .ToList();
                         allMatchingSentences.AddRange(pressureSentences);
+                        continue;
                     }
 
                     var isAngle = Regex.IsMatch(
@@ -390,22 +606,18 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
                     if (isAngle)
                     {
-                        var angleSentences = procedures
+                        var angleSentences = allInOne
     .Where(p => Regex.IsMatch(
-        p.m_sFullText,
+        p,
         @"\d+\s*(?:-\s*\d+)?\s*°|\d+\s*(?:-\s*\d+)?\s*degrees?",
         RegexOptions.IgnoreCase))
-    .Select(p => p.m_sFullText)
+    .Select(p => p)
     .ToList();
                         allMatchingSentences.AddRange(angleSentences);
+                        continue;
                     }
                 }
             }
-            else
-            {
-
-            }
-
             return allMatchingSentences;
         }
 
@@ -835,12 +1047,6 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             return reader;
         }
 
-        private bool SPOPSChanged(string spopName, SPMReader reader)
-        {
-            return reader.IsDMCSame(spopName);
-        }
-
-
         private List<string> GetVariants(string value)
         {
             var variants = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -1024,6 +1230,51 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             }
 
             return false;
+        }
+
+        public static (List<string> acqCleanerSolnTemperatureList, List<string> soakTimeList, List<string> allInOne)
+            GetChildBullets(HtmlAgilityPack.HtmlDocument doc, string bulletProcedure)
+        {
+            var acqCleanerSolnTemperatureList = new List<string>();
+            var soakTimeList = new List<string>();
+            var allInOne = new List<string>();
+
+            if (bulletProcedure.ToLower().Contains("immersion"))
+            {
+                var matchingLi = doc.DocumentNode.SelectSingleNode(
+        "//li[contains(., 'aqueous cleaner solutions')]");
+
+                var table = matchingLi?.SelectSingleNode(
+                    ".//table[contains(@class,'noneFrame') and contains(@class,'hoverRowBackEnabled')]");
+
+                foreach (var row in table?.SelectNodes(".//tr") ?? Enumerable.Empty<HtmlNode>())
+                {
+                    acqCleanerSolnTemperatureList.Add(HtmlEntity.DeEntitize(row.InnerText).Trim());
+                }
+
+                var ol = doc.DocumentNode.SelectSingleNode(
+        "//ol[@class='steplevel4' and div/p[contains(text(),'Let the part soak in the solution for the applicable time:')]]");
+
+                foreach (var li in ol?.SelectNodes("./li") ?? Enumerable.Empty<HtmlNode>())
+                {
+                    var text = li.SelectSingleNode(".//p")?.InnerText.Trim();
+
+                    if (!string.IsNullOrEmpty(text))
+                    {
+                        soakTimeList.Add(text);
+                    }
+                }
+            }
+            else
+            {
+                foreach (var li in doc.DocumentNode.SelectNodes("//ol[@class='steplevel0']//li")
+                         ?? Enumerable.Empty<HtmlNode>())
+                {
+                    allInOne.Add(HtmlEntity.DeEntitize(li.InnerText).Trim());
+                }
+            }
+
+            return (acqCleanerSolnTemperatureList, soakTimeList, allInOne);
         }
     }
 }
