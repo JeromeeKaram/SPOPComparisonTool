@@ -142,7 +142,7 @@ namespace SPOPComparisonTool
                     if (testWorkSheet == null)
                         continue;
 
-                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
@@ -281,7 +281,7 @@ namespace SPOPComparisonTool
 
             foreach (var bullet in bulletsWithoutDifferentSPOP)
             {
-                if (bullet.BulletPoint != "1.H.") continue;
+                //if (bullet.BulletPoint != "1.D") continue;
 
                 var key = $"{bullet.SPOPName}_{bullet.BulletPoint}";
 
@@ -387,7 +387,8 @@ namespace SPOPComparisonTool
                         else
                         {
                             var dmc = reader.GetDMC(spopToRefer);
-                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc, bullet.BulletPoint,
+                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc, 
+                                $"{comparisonResult.m_new.m_sCompleteBullet}_{bullet.BulletPoint}",
                                 searchText);
 
                             if (immersionBulletData != null)
@@ -402,15 +403,17 @@ namespace SPOPComparisonTool
 
                         var dmc = reader.GetDMC(spaceBetweenSPOPandNumber);
 
-                        var myData = TraverseBullet(txtNewRevisionLink, dmc, bullet.BulletPoint, searchText);
+                        var myData = TraverseBullet(txtNewRevisionLink, dmc,
+                            $"{comparisonResult.m_new.m_sCompleteBullet}_{bullet.BulletPoint}", searchText);
 
-                        linesFromProcedure.Add(myData.InnerText);
+                        if (myData != null)
+                            linesFromProcedure.Add(myData.InnerText);
 
                         foreach (var i in validManualRequirements)
                         {
                             if (i.Requirement.ToLower().Contains("volume"))
                             {
-                                if (!myData.InnerText.ToLower().Contains("volume"))
+                                if (myData != null && !myData.InnerText.ToLower().Contains("volume"))
                                 {
                                     var volumeData = TraverseBullet(txtNewRevisionLink, dmc, "", "volume");
                                     linesFromProcedure.Add(NormalizePercent(volumeData.InnerText));
@@ -419,7 +422,7 @@ namespace SPOPComparisonTool
 
                             if (i.Requirement.ToLower().Contains("mpa"))
                             {
-                                if (!myData.InnerText.ToLower().Contains("mpa"))
+                                if (myData != null && !myData.InnerText.ToLower().Contains("mpa"))
                                 {
                                     var kpaData = TraverseBullet(txtNewRevisionLink, dmc, "", "kpa");
                                     var mpaData = TraverseBullet(txtNewRevisionLink, dmc, "", "mpa");
@@ -1446,7 +1449,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
         public HtmlNode TraverseBullet(
     string newRevisionLink,
     string dmc,
-    string bullet,
+    string bulletVr_bulletSM,
     string searchText)
         {
             var web = new HtmlWeb();
@@ -1454,7 +1457,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
             // If no bullet path is supplied, search only in the current document.
             // Do NOT follow links.
-            if (string.IsNullOrWhiteSpace(bullet))
+            if (string.IsNullOrWhiteSpace(bulletVr_bulletSM))
             {
                 return doc.DocumentNode
                     .SelectNodes("//div[contains(@class,'step')]")
@@ -1471,7 +1474,11 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
             HtmlNode currentLi = null;
 
-            var tokens = Regex.Matches(bullet, @"\(\d+\)|[A-Za-z]|\d+")
+            var bullet = string.IsNullOrWhiteSpace(bulletVr_bulletSM)
+    ? string.Empty
+    : bulletVr_bulletSM.Split('_')[0];
+
+            var tokens = Regex.Matches(bullet, @"\d+|[A-Za-z]")
                 .Cast<System.Text.RegularExpressions.Match>()
                 .Select(m => m.Value)
                 .ToList();
