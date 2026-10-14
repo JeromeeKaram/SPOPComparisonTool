@@ -142,14 +142,14 @@ namespace SPOPComparisonTool
                     if (testWorkSheet == null)
                         continue;
 
-                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP209 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP213 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP218 表") continue; //Comment this line to process all worksheets
-                    if (testWorkSheet.Name != "SPOP225 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP225 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP2 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP211 表") continue; //Comment this line to process all worksheets
 
@@ -281,7 +281,7 @@ namespace SPOPComparisonTool
 
             foreach (var bullet in bulletsWithoutDifferentSPOP)
             {
-                //if (bullet.BulletPoint != "2.A.(1).(c)") continue;
+                if (bullet.BulletPoint != "1.H.") continue;
 
                 var key = $"{bullet.SPOPName}_{bullet.BulletPoint}";
 
@@ -319,7 +319,7 @@ namespace SPOPComparisonTool
                     {
                         continue;
                     }
-                    
+
                 }
                 //data.Add((record.SPOPName, record.BulletPoint));
 
@@ -387,11 +387,11 @@ namespace SPOPComparisonTool
                         else
                         {
                             var dmc = reader.GetDMC(spopToRefer);
-                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc, comparisonResult.m_new.m_sCompleteBullet,
+                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc, bullet.BulletPoint,
                                 searchText);
-                            linesFromProcedure.Add(immersionBulletData.InnerText);
 
-
+                            if (immersionBulletData != null)
+                                linesFromProcedure.Add(immersionBulletData.InnerText.Replace("Â", ""));
                         }
                     }
                     else
@@ -402,7 +402,7 @@ namespace SPOPComparisonTool
 
                         var dmc = reader.GetDMC(spaceBetweenSPOPandNumber);
 
-                        var myData = TraverseBullet(txtNewRevisionLink, dmc, comparisonResult.m_new.m_sCompleteBullet, searchText);
+                        var myData = TraverseBullet(txtNewRevisionLink, dmc, bullet.BulletPoint, searchText);
 
                         linesFromProcedure.Add(myData.InnerText);
 
@@ -424,9 +424,15 @@ namespace SPOPComparisonTool
                                     var kpaData = TraverseBullet(txtNewRevisionLink, dmc, "", "kpa");
                                     var mpaData = TraverseBullet(txtNewRevisionLink, dmc, "", "mpa");
                                     var psiData = TraverseBullet(txtNewRevisionLink, dmc, "", "psi");
-                                    linesFromProcedure.Add(mpaData.InnerText);
-                                    linesFromProcedure.Add(kpaData.InnerText);
-                                    linesFromProcedure.Add(psiData.InnerText);
+
+                                    if (mpaData != null)
+                                        linesFromProcedure.Add(mpaData.InnerText);
+
+                                    if (kpaData != null)
+                                        linesFromProcedure.Add(kpaData.InnerText);
+
+                                    if (psiData != null)
+                                        linesFromProcedure.Add(psiData.InnerText);
                                 }
                             }
                         }
@@ -1465,9 +1471,31 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
             HtmlNode currentLi = null;
 
-            for (int i = 0; i < bullet.Length; i++)
+            var tokens = Regex.Matches(bullet, @"\(\d+\)|[A-Za-z]|\d+")
+                .Cast<System.Text.RegularExpressions.Match>()
+                .Select(m => m.Value)
+                .ToList();
+
+            for (int i = 0; i < tokens.Count; i++)
             {
-                int index = GetBulletIndex(bullet[i]);
+                int index;
+
+                var token = tokens[i];
+
+                if (token.StartsWith("("))
+                {
+                    // (13) => 13
+                    index = int.Parse(token.Trim('(', ')'));
+                }
+                else if (int.TryParse(token, out index))
+                {
+                    // 1, 2, 3...
+                }
+                else
+                {
+                    // A, B, C...
+                    index = char.ToUpper(token[0]) - 'A' + 1;
+                }
 
                 var liNodes = currentOl
                     .Elements("li")
@@ -1479,12 +1507,10 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
                 currentLi = liNodes[index - 1];
 
-                bool isLastToken = i == bullet.Length - 1;
+                bool isLastToken = i == tokens.Count - 1;
 
                 if (isLastToken)
-                {
                     return currentLi;
-                }
 
                 var stepNode =
                     currentLi.SelectSingleNode("./div[contains(@class,'step')]");
