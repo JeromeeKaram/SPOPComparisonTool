@@ -72,7 +72,7 @@ namespace Cleaning_Records_Sheet.About
             label3.Name = "label3";
             label3.Size = new Size(680, 68);
             label3.TabIndex = 9;
-            label3.Text = "The primary purpose of this tool is to automate the comparison of a new spreadsheet revision with the previous version and generate a new spreadsheet highlighting the changes.";
+            label3.Text = "The primary purpose of this tool is to compare previous and latest Engine Maintenance Manual (SPOP) revisions against Cleaning Record requirements and automatically highlight any procedure changes, missing requirements, or discrepancies in the Cleaning Record Excel file.";
             // 
             // grbContactDet
             // 

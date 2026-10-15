@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 //using System.Windows.Forms;
 
-namespace StringComparison
+namespace StringComparison1
 {
     class Utility
     {

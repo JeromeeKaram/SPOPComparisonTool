@@ -24,6 +24,8 @@ namespace SPOPComparisonTool
 {
     public partial class Form1 : Form
     {
+        private string OUTPUT_FILENAME = "SPM_CleaningRecord_Highlight.xlsx";
+
         public Form1()
         {
             InitializeComponent();
@@ -50,9 +52,13 @@ namespace SPOPComparisonTool
                 return;
             }
 
+            if (!ValidateOutputFolder(txtOutPutPath))
+                return;
+
             string oldRevisionLink = txtOldRevisionLink.Text;
             string newRevisionLink = txtNewRevisionLink.Text;
             string cleaningRecord = txtCleaningRecord.Text;
+            string outputPath = txtOutPutPath.Text;
 
             try
             {
@@ -62,7 +68,7 @@ namespace SPOPComparisonTool
 
                 await Task.Run(() =>
                 {
-                    ReadExcel(oldRevisionLink, newRevisionLink, cleaningRecord);
+                    ReadExcel(oldRevisionLink, newRevisionLink, outputPath, cleaningRecord);
                 });
             }
             catch (Exception ex)
@@ -91,7 +97,7 @@ namespace SPOPComparisonTool
             dialog.Dispose();
         }
 
-        private void ReadExcel(string txtOldRevisionLink, string txtNewRevisionLink, string txtCleaningRecord)
+        private void ReadExcel(string txtOldRevisionLink, string txtNewRevisionLink, string txtOutputPath, string txtCleaningRecord)
         {
             var workSheetNamesForReader = new List<string>();
             var workSheetNames = new List<string>();
@@ -156,13 +162,13 @@ namespace SPOPComparisonTool
                     var matchSpopName = Regex.Match(testWorkSheet.Name, @"SPOP\s*(\d+)", RegexOptions.IgnoreCase);
                     var spopName = matchSpopName.Success ? $"SPOP {matchSpopName.Groups[1].Value}" : testWorkSheet.Name;
 
-                    //var isDMCSame = reader.IsDMCSame(spopName);
+                    var isDMCSame = reader.IsDMCSame(spopName);
 
-                    //if (isDMCSame)
-                    //{
-                    //    Debug.WriteLine($"No changes in {testWorkSheet.Name}");
-                    //    continue;
-                    //}
+                    if (isDMCSame)
+                    {
+                        Debug.WriteLine($"No changes in {testWorkSheet.Name}");
+                        continue;
+                    }
 
                     int rowStartsAt = GetDataStartRow(testWorkSheet);
 
@@ -261,7 +267,8 @@ namespace SPOPComparisonTool
                 }
             }
 
-            var outputFilePath = HighlightChanges(changedManualRequirements, dataSameSPOP.changedBulletPoints, Color.Yellow, txtCleaningRecord);
+            var outputFilePath = HighlightChanges(changedManualRequirements, dataSameSPOP.changedBulletPoints, 
+                Color.Yellow, txtCleaningRecord, txtOutputPath);
 
             //CreateSPOPBulletExcel(data, noData, txtCleaningRecord);
             //Open the Excel file
@@ -1043,28 +1050,20 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             return false;
         }
 
-        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, Color color, string txtCleaningRecord)
+        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, 
+            Color color, string txtCleaningRecord, string txtOutputPath)
         {
             var sourceFile = new FileInfo(txtCleaningRecord);
-
-            var outputFilePath = Path.Combine(
-        sourceFile.DirectoryName,
-        Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx");
 
             using (var excelPackage = new ExcelPackage(sourceFile))
             {
                 HighlightList(excelPackage, manualRequirements, color, true);
                 HighlightList(excelPackage, bulletPoints, color, false);
 
-                //        var outputFile = new FileInfo(
-                //Path.Combine(
-                //    sourceFile.DirectoryName,
-                //    Path.GetFileNameWithoutExtension(sourceFile.Name) + "_Highlighted.xlsx"));
-
-                excelPackage.SaveAs(new FileInfo(outputFilePath));
+                excelPackage.SaveAs(new FileInfo(txtOutputPath));
             }
 
-            return outputFilePath;
+            return txtOutputPath;
         }
 
         private void HighlightList(ExcelPackage excelPackage, List<Highlight> highLight, Color color, bool highlightNextColumn)
@@ -1099,6 +1098,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
         private void Form1_Load(object sender, EventArgs e)
         {
+            progressBar1.Visible = false;
 
 #if DEBUG
             txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
@@ -1584,6 +1584,68 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
                 Regex.Matches(input, @"[A-Za-z]|\d+")
                      .Cast<System.Text.RegularExpressions.Match>()
                      .Select(m => m.Value));
+        }
+
+        public bool ValidateOutputFolder(TextBox textBox)
+        {
+            string path = textBox.Text?.Trim();
+
+            // Check empty
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                MessageBox.Show("Output folder path cannot be empty.");
+                textBox.Focus();
+                return false;
+            }
+
+            if (!path.EndsWith(".xlsx", StringComparison.OrdinalIgnoreCase))
+            {
+                MessageBox.Show($"Output file must be an Excel file (.xlsx). Please select a valid file.");
+                textBox.Focus();
+                return false;
+            }
+
+            // Check invalid filename characters
+            string fileName = Path.GetFileName(path);
+
+            if (fileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                MessageBox.Show($"Output file contains invalid characters.");
+                textBox.Focus();
+                return false;
+            }
+
+            // Validate path format
+            try
+            {
+                Path.GetFullPath(path);
+            }
+            catch
+            {
+                MessageBox.Show("Invalid folder path format.");
+                textBox.Focus();
+                return false;
+            }
+
+            return true;
+        }
+
+        private void btnBrowseOutputPath_Click(object sender, EventArgs e)
+        {
+            
+
+            using (SaveFileDialog folderDialog = new SaveFileDialog())
+            {
+                folderDialog.FileName = OUTPUT_FILENAME;
+                folderDialog.Title = "Select output file path";
+                folderDialog.Filter = "Excel Files (*.xlsx)|*.xlsx|All Files (*.*)|*.*";
+
+                if (folderDialog.ShowDialog() == DialogResult.OK)
+                {
+                    string selectedPath = folderDialog.FileName;
+                    txtOutPutPath.Text = selectedPath;
+                }
+            }
         }
     }
 }

@@ -722,7 +722,7 @@ namespace EngineManualReader
             List<ComparisonResult> lstCompares = new List<ComparisonResult>();
             try
             {
-                StringComparison.StringComparison strCompareObj = new StringComparison.StringComparison(Utility.m_sTempPath );
+                var strCompareObj = new StringComparison1.StringComparison(Utility.m_sTempPath );
 
                 Dictionary<string, ProcedureInfo> dtOld = new Dictionary<string, ProcedureInfo>();
                 Dictionary<string, ProcedureInfo> dtNew = new Dictionary<string, ProcedureInfo>();

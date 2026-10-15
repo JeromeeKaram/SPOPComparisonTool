@@ -46,6 +46,9 @@
             this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.txtOutPutPath = new System.Windows.Forms.TextBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.btnBrowseOutputPath = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -54,7 +57,7 @@
             // txtNewRevisionLink
             // 
             this.txtNewRevisionLink.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtNewRevisionLink.Location = new System.Drawing.Point(175, 62);
+            this.txtNewRevisionLink.Location = new System.Drawing.Point(175, 53);
             this.txtNewRevisionLink.Name = "txtNewRevisionLink";
             this.txtNewRevisionLink.Size = new System.Drawing.Size(563, 22);
             this.txtNewRevisionLink.TabIndex = 17;
@@ -63,25 +66,25 @@
             // 
             this.label3.AutoSize = true;
             this.label3.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label3.Location = new System.Drawing.Point(29, 66);
+            this.label3.Location = new System.Drawing.Point(29, 57);
             this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(129, 14);
+            this.label3.Size = new System.Drawing.Size(102, 14);
             this.label3.TabIndex = 16;
-            this.label3.Text = "New Revision Link";
+            this.label3.Text = "New SPM Link";
             // 
             // label2
             // 
             this.label2.AutoSize = true;
             this.label2.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label2.Location = new System.Drawing.Point(37, 101);
+            this.label2.Location = new System.Drawing.Point(29, 92);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(118, 14);
+            this.label2.Size = new System.Drawing.Size(140, 14);
             this.label2.TabIndex = 14;
-            this.label2.Text = "Select Document";
+            this.label2.Text = "Select Record Sheet";
             // 
             // btnBrowseDocument
             // 
-            this.btnBrowseDocument.Location = new System.Drawing.Point(670, 97);
+            this.btnBrowseDocument.Location = new System.Drawing.Point(670, 88);
             this.btnBrowseDocument.Name = "btnBrowseDocument";
             this.btnBrowseDocument.Size = new System.Drawing.Size(68, 22);
             this.btnBrowseDocument.TabIndex = 12;
@@ -94,7 +97,7 @@
             this.btnRun.BackColor = System.Drawing.SystemColors.Highlight;
             this.btnRun.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Bold);
             this.btnRun.ForeColor = System.Drawing.Color.White;
-            this.btnRun.Location = new System.Drawing.Point(320, 135);
+            this.btnRun.Location = new System.Drawing.Point(320, 154);
             this.btnRun.Name = "btnRun";
             this.btnRun.Size = new System.Drawing.Size(185, 36);
             this.btnRun.TabIndex = 10;
@@ -104,6 +107,9 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.btnBrowseOutputPath);
+            this.groupBox1.Controls.Add(this.txtOutPutPath);
+            this.groupBox1.Controls.Add(this.label4);
             this.groupBox1.Controls.Add(this.txtOldRevisionLink);
             this.groupBox1.Controls.Add(this.label1);
             this.groupBox1.Controls.Add(this.txtNewRevisionLink);
@@ -114,14 +120,14 @@
             this.groupBox1.Controls.Add(this.btnRun);
             this.groupBox1.Location = new System.Drawing.Point(45, 88);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(767, 187);
+            this.groupBox1.Size = new System.Drawing.Size(767, 199);
             this.groupBox1.TabIndex = 18;
             this.groupBox1.TabStop = false;
             // 
             // txtOldRevisionLink
             // 
             this.txtOldRevisionLink.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtOldRevisionLink.Location = new System.Drawing.Point(175, 31);
+            this.txtOldRevisionLink.Location = new System.Drawing.Point(175, 22);
             this.txtOldRevisionLink.Name = "txtOldRevisionLink";
             this.txtOldRevisionLink.Size = new System.Drawing.Size(563, 22);
             this.txtOldRevisionLink.TabIndex = 19;
@@ -130,17 +136,17 @@
             // 
             this.label1.AutoSize = true;
             this.label1.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
-            this.label1.Location = new System.Drawing.Point(33, 34);
+            this.label1.Location = new System.Drawing.Point(29, 25);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(122, 14);
+            this.label1.Size = new System.Drawing.Size(95, 14);
             this.label1.TabIndex = 18;
-            this.label1.Text = "Old Revision Link";
+            this.label1.Text = "Old SPM Link";
             // 
             // txtCleaningRecord
             // 
             this.txtCleaningRecord.Enabled = false;
             this.txtCleaningRecord.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtCleaningRecord.Location = new System.Drawing.Point(175, 97);
+            this.txtCleaningRecord.Location = new System.Drawing.Point(175, 88);
             this.txtCleaningRecord.Name = "txtCleaningRecord";
             this.txtCleaningRecord.Size = new System.Drawing.Size(489, 22);
             this.txtCleaningRecord.TabIndex = 11;
@@ -224,6 +230,35 @@
             this.progressBar1.Size = new System.Drawing.Size(767, 20);
             this.progressBar1.TabIndex = 14;
             // 
+            // txtOutPutPath
+            // 
+            this.txtOutPutPath.Enabled = false;
+            this.txtOutPutPath.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtOutPutPath.Location = new System.Drawing.Point(175, 122);
+            this.txtOutPutPath.Name = "txtOutPutPath";
+            this.txtOutPutPath.Size = new System.Drawing.Size(489, 22);
+            this.txtOutPutPath.TabIndex = 21;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Font = new System.Drawing.Font("Verdana", 9F, System.Drawing.FontStyle.Bold);
+            this.label4.Location = new System.Drawing.Point(29, 126);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(131, 14);
+            this.label4.TabIndex = 20;
+            this.label4.Text = "Select Output Path";
+            // 
+            // btnBrowseOutputPath
+            // 
+            this.btnBrowseOutputPath.Location = new System.Drawing.Point(671, 122);
+            this.btnBrowseOutputPath.Name = "btnBrowseOutputPath";
+            this.btnBrowseOutputPath.Size = new System.Drawing.Size(68, 22);
+            this.btnBrowseOutputPath.TabIndex = 22;
+            this.btnBrowseOutputPath.Text = "Browse";
+            this.btnBrowseOutputPath.UseVisualStyleBackColor = true;
+            this.btnBrowseOutputPath.Click += new System.EventHandler(this.btnBrowseOutputPath_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -268,6 +303,9 @@
         private System.Windows.Forms.ProgressBar progressBar1;
         private System.Windows.Forms.TextBox txtOldRevisionLink;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.TextBox txtOutPutPath;
+        private System.Windows.Forms.Label label4;
+        private System.Windows.Forms.Button btnBrowseOutputPath;
     }
 }
 
