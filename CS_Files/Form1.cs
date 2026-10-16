@@ -172,7 +172,7 @@ namespace SPOPComparisonTool
                     if (testWorkSheet == null)
                         continue;
 
-                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
@@ -220,7 +220,7 @@ namespace SPOPComparisonTool
                             }
 
                             excelRecord.ManualRequirement = manualRequirements;
-                            excelRecord.ExcelSPOPName = testWorkSheet.Name;
+                            excelRecord.SheetName = testWorkSheet.Name;
                             excelRecord.SPOPName = Regex.Replace(testWorkSheet.Name, @"^(SPOP)\s*(\d+).*", "$1 $2");
                             excelRecord.Row = startRow;
                             excelRecord.ProcedureText = procedureText;
@@ -341,28 +341,30 @@ namespace SPOPComparisonTool
 
             foreach (var bullet in bulletsWithoutDifferentSPOP)
             {
-                //if (bullet.BulletPoint != "1.D") continue;
+                if (bullet.BulletPoint != "1.D") continue;
 
-                var key = $"{bullet.ExcelSPOPName}_{bullet.BulletPoint}";
+                var key = $"{bullet.SheetName}_{bullet.BulletPoint}";
 
                 if (!observationsList.ContainsKey(key))
                 {
                     observationsList.Add(key, new List<string>());
                 }
 
-                var spaceBetweenSPOPandNumber = "";
+                var spopName = "";
                 var bulletPoint = "";
 
                 if (bullet.IsNavigateToAnotherSPOP)
                 {
-                    spaceBetweenSPOPandNumber = bullet.NavigateToSPOPName;
+                    spopName = bullet.NavigateToSPOPName;
+                    bulletPoint = "";
                 }
                 else
                 {
-                    bulletPoint = bullet.SPOPName;
+                    spopName = bullet.SPOPName;
+                    bulletPoint = bullet.BulletPoint;
                 }
 
-                var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
+                var comparisonResult = GetComparisonResult(reader, spopName, bulletPoint);
 
                 if (comparisonResult == null)
                 {
@@ -378,7 +380,7 @@ namespace SPOPComparisonTool
                 {
                     var highLight = new Highlight();
                     highLight.Row = bullet.Row;
-                    highLight.SPOPName = bullet.ExcelSPOPName;
+                    highLight.SPOPName = bullet.SheetName;
                     highLight.Columns2Highlight = new List<string> { $"{bullet.BulletPoint}_{bullet.Row}_2" };
                     changedBulletPoints.Add(highLight);
                 }
@@ -430,7 +432,7 @@ namespace SPOPComparisonTool
 
                     if (bullet.ProcedureText.ToLower().Contains("immersion"))
                     {
-                        var spopToRefer = string.IsNullOrEmpty(bullet.NavigateToSPOPName) ? bullet.ExcelSPOPName
+                        var spopToRefer = string.IsNullOrEmpty(bullet.NavigateToSPOPName) ? bullet.SheetName
                             : bullet.NavigateToSPOPName;
 
                         var match = Regex.Match(spopToRefer, @"\bSPOP\s*(\d+)\b", RegexOptions.IgnoreCase);
@@ -461,7 +463,7 @@ namespace SPOPComparisonTool
                         var procedures = comparisonResult.m_new.m_oParent.m_lstChilds;
                         linesFromProcedure = procedures.Select(item => item.m_sFullText).ToList();
 
-                        var dmc = reader.GetDMC(spaceBetweenSPOPandNumber);
+                        var dmc = reader.GetDMC(spopName);
 
                         var myData = TraverseBullet(txtNewRevisionLink, dmc,
                             $"{comparisonResult.m_new.m_sCompleteBullet}_{bullet.BulletPoint}", searchText);
@@ -540,7 +542,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
 
                             if (matched)
                             {
-                                if (observationsList.TryGetValue($"{bullet.ExcelSPOPName}_{bullet.BulletPoint}", out List<string> values))
+                                if (observationsList.TryGetValue($"{bullet.SheetName}_{bullet.BulletPoint}", out List<string> values))
                                 {
                                     values.Add(item.Requirement);
                                 }
@@ -559,7 +561,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
                     {
                         var highLight = new Highlight();
                         highLight.Row = bullet.Row;
-                        highLight.SPOPName = bullet.ExcelSPOPName;
+                        highLight.SPOPName = bullet.SheetName;
                         highLight.Columns2Highlight = highLightManualRequirement;
                         changedManualRequirements.Add(highLight);
                     }
@@ -592,7 +594,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
             {
                 //if (bullet.BulletPoint != "2.A.(2)") continue;
 
-                var key = $"{bullet.ExcelSPOPName}_{bullet.BulletPoint}";
+                var key = $"{bullet.SheetName}_{bullet.BulletPoint}";
 
                 if (!observationsList.ContainsKey(key))
                 {
@@ -652,7 +654,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
                         if (matched)
                         {
-                            if (observationsList.TryGetValue($"{bullet.ExcelSPOPName}_{bullet.BulletPoint}", out List<string> values))
+                            if (observationsList.TryGetValue($"{bullet.SheetName}_{bullet.BulletPoint}", out List<string> values))
                             {
                                 values.Add(item.Requirement);
                             }
@@ -671,7 +673,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
                 {
                     var highLight = new Highlight();
                     highLight.Row = bullet.Row;
-                    highLight.SPOPName = bullet.ExcelSPOPName;
+                    highLight.SPOPName = bullet.SheetName;
                     highLight.Columns2Highlight = highLightManualRequirement;
                     cmrDifferentSPOP.Add(highLight);
                 }
@@ -1163,9 +1165,9 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             progressBar1.Visible = false;
 
 #if DEBUG
-            //txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
-            //txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
-            //txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
+            txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
+            txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
+            txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
 #endif
 
             lblHeader.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;

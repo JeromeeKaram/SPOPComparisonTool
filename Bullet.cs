@@ -10,7 +10,7 @@ namespace SPOPComparisonTool
     {
         public Bullet() { }
 
-        public string ExcelSPOPName { get; set; }
+        public string SheetName { get; set; }
 
         public int Row { get; set; }
 
