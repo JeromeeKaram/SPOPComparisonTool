@@ -20,6 +20,16 @@ namespace Cleaning_Records_Sheet
         Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)> dtProcedures = new Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)>();
         Dictionary<string, string> dtDMC = new Dictionary<string, string>();
         Dictionary<string, List<ComparisonResult>> dtResults = new Dictionary<string, List<ComparisonResult>>();
+
+        public string GetDMC(string spop)
+        {
+            if (dtDMC.ContainsKey(spop))
+            {
+                return dtDMC[spop];
+            }
+            return "";
+        }
+
         public ComparisonResult GetStep(string spop, string step)
         {
             try
@@ -70,6 +80,7 @@ namespace Cleaning_Records_Sheet
             }
             return null;
         }
+
         public bool IsDMCSame(string spop)
         {
             try
@@ -90,16 +101,7 @@ namespace Cleaning_Records_Sheet
             }
             return false;
         }
-
-        public string GetDMC(string spop)
-        {
-            if (dtDMC.ContainsKey(spop))
-            {
-                return dtDMC[spop];
-            }
-            return "";
-        }
-        public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops)//string sXlPath)
+        public void ReadSPM(string sOldURL, string sNewUrl, List<string> lstSpops, List<string> lstSpopsTitle)//string sXlPath)
         {
             EngineManualReader.SeleniumReader oseleniumReader = new EngineManualReader.SeleniumReader();
             try
@@ -119,17 +121,32 @@ namespace Cleaning_Records_Sheet
                     else
                     {
                         lstSpops.RemoveAt(i);
+                        lstSpopsTitle.RemoveAt(i);
                         i--;
                     }
                 }
                 //Remove duplicates 
-                lstSpops = lstSpops.Distinct().ToList();
+                for (int i = 0; i < lstSpops.Count; i++)
+                {
+                    for (int j = i + 1; j < lstSpops.Count; j++)
+                    {
+                        if (lstSpops[i] == lstSpops[j])
+                        {
+                            lstSpops.RemoveAt(j);
+                            lstSpopsTitle.RemoveAt(j);
+                            j--;
+                        }
+                    }
+                }
+                //lstSpops = lstSpops.Distinct().ToList();
 
                 //------------- READ the Engine Manual data from Old Revision --- 
-                foreach (string spop in lstSpops)
+                //foreach (string spop in lstSpops)
+                for (int i = 0; i < lstSpops.Count; i++)
                 {
+                    string spop = lstSpops[i];
                     SolrSearch oo = new SolrSearch();
-                    string dmc = oo.SearchTask(sOldURL, spop);
+                    string dmc = oo.SearchTask(sOldURL, spop, lstSpopsTitle[i]);
                     if (dmc.Length > 0)
                     {
                         dtDMC.Add(spop, dmc);
@@ -431,7 +448,7 @@ namespace Cleaning_Records_Sheet
             }
             return lstEngineSns;
         }
-        public string SearchTask(string hmtlpath, string searchtext)
+        public string SearchTask(string hmtlpath, string searchtext, string Recordtitle)
         {
             string DMClink = "";
             try
@@ -446,10 +463,13 @@ namespace Cleaning_Records_Sheet
                         {
                             if (task.m_sTitleText.Contains(searchtext))
                             {
-                                if (bIsProcedureTask(task.m_sLink))
+                                if (bIsTitleMatch(task.m_sTitleText, Recordtitle))
                                 {
-                                    DMClink = System.IO.Path.GetFileNameWithoutExtension(task.m_sLink);
-                                    break;
+                                    if (bIsProcedureTask(task.m_sLink))
+                                    {
+                                        DMClink = System.IO.Path.GetFileNameWithoutExtension(task.m_sLink);
+                                        break;
+                                    }
                                 }
                             }
                         }
@@ -462,6 +482,12 @@ namespace Cleaning_Records_Sheet
                 Utility.WriteErrorLog(ee);
             }
             return DMClink;
+        }
+        bool bIsTitleMatch(string EMtitle, string recordSheetTitle)
+        {
+            if (EMtitle.Replace(" ", "").ToUpper().Trim().Contains(recordSheetTitle.Replace(" ", "").ToUpper().Trim()))
+                return true;
+            return false;
         }
         private bool bIsProcedureTask(string url)
         {

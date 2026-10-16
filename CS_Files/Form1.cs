@@ -101,13 +101,10 @@ namespace SPOPComparisonTool
         {
             var workSheetNamesForReader = new List<string>();
             var workSheetNames = new List<string>();
-            //var changedManualRequirements = new List<Highlight>();
-            //var changedBulletPoints = new List<Highlight>();
             var excelData = new List<Bullet>();
 
-            //var noData = new List<(string SPOP, string Bullet)>();
-            //var data = new List<(string SPOP, string Bullet)>();
             var spmReader = new SPMReader();
+            var lst = new List<string>();
 
             using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
             {
@@ -137,7 +134,34 @@ namespace SPOPComparisonTool
                 workSheetNamesForReader.Add(Regex.Replace(workSheetNames[i], @"^(SPOP)\s*(\d+).*", "$1 $2"));
             }
 
-            var reader = GetReader(txtOldRevisionLink, txtNewRevisionLink, workSheetNamesForReader);
+            var lstSPOPTitles = new List<string>();
+
+            using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
+            {
+                foreach (var name in workSheetNames)
+                {
+                    var testWorkSheet = package.Workbook.Worksheets[name];
+
+                    if (testWorkSheet == null)
+                        continue;
+
+                    int rowStartsAt = GetDataStartRow(testWorkSheet);
+
+                    if (rowStartsAt == 0)
+                    {
+                        Debug.WriteLine($"Header not found in {testWorkSheet.Name}");
+                        continue;
+                    }
+
+                    if (rowStartsAt > 0)
+                    {
+                        var spopTitle = GetSPOPTitle(testWorkSheet, rowStartsAt);
+                        lstSPOPTitles.Add(spopTitle);
+                    }
+                }
+            }
+
+            var reader = GetReader(txtOldRevisionLink, txtNewRevisionLink, workSheetNamesForReader, lstSPOPTitles);
 
             using (var package = new ExcelPackage(new FileInfo(txtCleaningRecord)))
             {
@@ -226,7 +250,7 @@ namespace SPOPComparisonTool
                             }
 
                             // Text of the merged B cell
-                            excelRecord.BulletPoint = Regex.Replace(testWorkSheet.Cells[startRow, 2].Text, @"\r?\n\s*", "");
+                            excelRecord.BulletPoint = Regex.Replace(Regex.Replace(testWorkSheet.Cells[startRow, 2].Text, @"\r?\n\s*", ""), @"\s+", "");
 
                             excelData.Add(excelRecord);
                         }
@@ -239,8 +263,33 @@ namespace SPOPComparisonTool
             var outSPOPData = bullets.Where(b => b.IsNavigateToAnotherSPOP).ToList();
             var inSPOPData = bullets.Where(b => !b.IsNavigateToAnotherSPOP).ToList();
 
-            var dataDifferentSPOP = ProcessOutSPOPBullets(outSPOPData, reader, txtNewRevisionLink);
-            var dataSameSPOP = ProcessInSPOPBullets(inSPOPData, reader, txtNewRevisionLink);
+            (List<Highlight> cmrDifferentSPOP,
+ Dictionary<string, List<string>> observationsList) dataDifferentSPOP =
+(
+    new List<Highlight>(),
+    new Dictionary<string, List<string>>()
+);
+
+            (
+    List<Highlight> changedManualRequirements,
+    List<Highlight> changedBulletPoints,
+    Dictionary<string, List<string>> observationsList
+) dataSameSPOP =
+(
+    new List<Highlight>(),
+    new List<Highlight>(),
+    new Dictionary<string, List<string>>()
+);
+
+            if (outSPOPData.Any())
+            {
+                dataDifferentSPOP = ProcessOutSPOPBullets(outSPOPData, reader, txtNewRevisionLink);
+            }
+
+            if (inSPOPData.Any())
+            {
+                dataSameSPOP = ProcessInSPOPBullets(inSPOPData, reader, txtNewRevisionLink);
+            }
 
             var changedManualRequirements = new List<Highlight>();
 
@@ -267,16 +316,26 @@ namespace SPOPComparisonTool
                 }
             }
 
-            var outputFilePath = HighlightChanges(changedManualRequirements, dataSameSPOP.changedBulletPoints, 
-                Color.Yellow, txtCleaningRecord, txtOutputPath);
+            var outputFilePath = HighlightChanges(changedManualRequirements, dataSameSPOP.changedBulletPoints,
+                Color.LightBlue, txtCleaningRecord, txtOutputPath);
 
-            //CreateSPOPBulletExcel(data, noData, txtCleaningRecord);
             //Open the Excel file
 
             Process.Start(new ProcessStartInfo(outputFilePath)
             {
                 UseShellExecute = true
             });
+        }
+
+        private string GetSPOPTitle(ExcelWorksheet testWorkSheet, int rowStartsAt)
+        {
+            int titleRow = rowStartsAt - 2;
+
+            if (titleRow <= 0)
+                return string.Empty;
+
+            // D:H is merged, so the actual value is in D
+            return testWorkSheet.Cells[titleRow, 4].Text?.Trim();
         }
 
         private (List<Highlight> changedManualRequirements, List<Highlight> changedBulletPoints, Dictionary<string, List<string>> observationsList)
@@ -315,19 +374,9 @@ namespace SPOPComparisonTool
 
                 if (comparisonResult == null)
                 {
-                    //noData.Add((record.SPOPName, record.BulletPoint));
-                    //var bulletInfo = bullet.BulletPoint;
-
-                    //var fullBullet = ConvertReference(bullet.BulletPoint);
-
-                    //var pageData = TraverseBullet(txtNewRevisionLink, reader.GetDMC(spaceBetweenSPOPandNumber), fullBullet, "");
-
-                    //if (pageData == null)
-                    {
-                        continue;
-                    }
-
+                    continue;
                 }
+
                 //data.Add((record.SPOPName, record.BulletPoint));
 
                 var bulletInfoNew = comparisonResult.m_new.m_sCompleteBullet;
@@ -342,12 +391,23 @@ namespace SPOPComparisonTool
                     changedBulletPoints.Add(highLight);
                 }
 
-                //if (comparisonResult.m_eCompareType != CompareType.SAME)
+                if (comparisonResult.m_eCompareType != CompareType.SAME)
                 {
                     var newVersionbulletText1 = comparisonResult.m_new.m_sText;
 
-                    //var web = new HtmlWeb();
+                    var linkLines = new List<string>();
 
+                    var linkInText = Regex.Match(
+    newVersionbulletText1,
+    @",\s*use\s+([A-Z0-9]+(?:-[A-Z0-9]+){7})\b",
+    RegexOptions.IgnoreCase
+);
+
+                    if (linkInText.Success)
+                    {
+                        string dmcFromLine = linkInText.Groups[1].Value;
+                        linkLines = GetLinkLines(txtNewRevisionLink, dmcFromLine);
+                    }
 
                     var highLightManualRequirement = new List<string>();
 
@@ -380,6 +440,7 @@ namespace SPOPComparisonTool
                     {
                         var spopToRefer = string.IsNullOrEmpty(bullet.NavigateToSPOPName) ? bullet.SPOPName
                             : bullet.NavigateToSPOPName;
+
                         var match = Regex.Match(spopToRefer, @"\bSPOP\s*(\d+)\b", RegexOptions.IgnoreCase);
 
                         spopToRefer = match.Success
@@ -394,7 +455,7 @@ namespace SPOPComparisonTool
                         else
                         {
                             var dmc = reader.GetDMC(spopToRefer);
-                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc, 
+                            var immersionBulletData = TraverseBullet(txtNewRevisionLink, dmc,
                                 $"{comparisonResult.m_new.m_sCompleteBullet}_{bullet.BulletPoint}",
                                 searchText);
 
@@ -415,6 +476,11 @@ namespace SPOPComparisonTool
 
                         if (myData != null)
                             linesFromProcedure.Add(myData.InnerText);
+
+                        if (linkLines.Any())
+                        {
+                            linesFromProcedure.AddRange(linkLines);
+                        }
 
                         foreach (var i in validManualRequirements)
                         {
@@ -511,6 +577,19 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
             return (changedManualRequirements, changedBulletPoints, observationsList);
         }
 
+        private List<string> GetLinkLines(string newRevisionLink, string dmcFromLine)
+        {
+            var web = new HtmlWeb();
+            var doc = web.Load($"{newRevisionLink}/{dmcFromLine}.html");
+
+            return doc.DocumentNode
+              .SelectNodes("//li")
+              ?.Select(li => HtmlEntity.DeEntitize(li.InnerText).Trim())
+              .Where(text => !string.IsNullOrWhiteSpace(text))
+              .ToList()
+           ?? new List<string>();
+        }
+
         private (List<Highlight> cmrDifferentSPOP, Dictionary<string, List<string>> observationsList)
             ProcessOutSPOPBullets(List<Bullet> bulletsWithDifferentSPOP, SPMReader reader, string newRevisionLink)
         {
@@ -528,89 +607,81 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
                     observationsList.Add(key, new List<string>());
                 }
 
-                //if (comparisonResult.m_eCompareType != CompareType.SAME)
+                var highLightManualRequirement = new List<string>();
+
+                var validManualRequirements = new List<(string Requirement, int Row)>();
+
+                foreach (var item in bullet.ManualRequirement)
                 {
-                    //var newVersionbulletText1 = comparisonResult.m_new.m_sFullText;
-
-                    var highLightManualRequirement = new List<string>();
-
-                    //var procedureSteps = comparisonResult.m_new.m_oParent.m_lstChilds;
-
-                    var validManualRequirements = new List<(string Requirement, int Row)>();
-
-                    foreach (var item in bullet.ManualRequirement)
+                    if (string.IsNullOrWhiteSpace(item.Requirement) || IgnoreManualRequirement(item.Requirement))
                     {
-                        if (string.IsNullOrWhiteSpace(item.Requirement) || IgnoreManualRequirement(item.Requirement))
-                        {
-                            continue;
-                        }
-
-                        validManualRequirements.Add(item);
+                        continue;
                     }
 
-                    var str = reader.GetDMC(bullet.NavigateToSPOPName);
+                    validManualRequirements.Add(item);
+                }
 
-                    //var procedureSteps = reader.GetProcedure(bullet.NavigateToSPOPName, "New");
-                    var linesFromProcedure = GetProcedureLinesForImmersion(reader, bullet, validManualRequirements,
-                        newRevisionLink, bullet.NavigateToSPOPName);
+                var str = reader.GetDMC(bullet.NavigateToSPOPName);
 
-                    foreach (var item in validManualRequirements)
+                var linesFromProcedure = GetProcedureLinesForImmersion(reader, bullet, validManualRequirements,
+                    newRevisionLink, bullet.NavigateToSPOPName);
+
+                foreach (var item in validManualRequirements)
+                {
+                    var parts = item.Requirement.Split(new[] { ':' }, 2);
+
+                    var splitItem = parts.Length == 2
+                        ? parts[1].Trim()
+                        : item.Requirement.Trim();
+
+                    var variants = GetVariants(splitItem);
+
+                    bool matched = false;
+
+                    foreach (var procedure in linesFromProcedure)
                     {
-                        var parts = item.Requirement.Split(new[] { ':' }, 2);
-
-                        var splitItem = parts.Length == 2
-                            ? parts[1].Trim()
-                            : item.Requirement.Trim();
-
-                        var variants = GetVariants(splitItem);
-
-                        bool matched = false;
-
-                        foreach (var procedure in linesFromProcedure)
-                        {
-                            matched = ManualRequirementExistsInNewRevision(procedure, variants) ||
+                        matched = ManualRequirementExistsInNewRevision(procedure, variants) ||
 RangeEndpointsExistInSameSentence(procedure, splitItem);
 
-                            if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
-                            {
-                                matched = IsEquivalentPressureRange(procedure, splitItem);
-                            }
-
-                            if (!matched && ContainsTimeUnit(splitItem))
-                            {
-                                matched = IsEquivalentTimeRange(procedure, splitItem);
-                            }
-
-                            if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
-                            {
-                                matched = IsEquivalentTemperatureRange(procedure, splitItem);
-                            }
-
-                            if (matched)
-                            {
-                                if (observationsList.TryGetValue($"{bullet.SPOPName}_{bullet.BulletPoint}", out List<string> values))
-                                {
-                                    values.Add(item.Requirement);
-                                }
-
-                                break;
-                            }
-                        }
-
-                        if (!matched)
+                        if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
                         {
-                            highLightManualRequirement.Add($"{splitItem}_{item.Row}_7");
+                            matched = IsEquivalentPressureRange(procedure, splitItem);
+                        }
+
+                        if (!matched && ContainsTimeUnit(splitItem))
+                        {
+                            matched = IsEquivalentTimeRange(procedure, splitItem);
+                        }
+
+                        if (!matched && (splitItem.Contains("℃") || splitItem.Contains("°C") || splitItem.ToLowerInvariant().Contains("degrees c") || splitItem.Contains("°c")))
+                        {
+                            matched = IsEquivalentTemperatureRange(procedure, splitItem);
+                        }
+
+                        if (matched)
+                        {
+                            if (observationsList.TryGetValue($"{bullet.SPOPName}_{bullet.BulletPoint}", out List<string> values))
+                            {
+                                values.Add(item.Requirement);
+                            }
+
+                            break;
                         }
                     }
 
-                    if (highLightManualRequirement.Any())
+                    if (!matched)
                     {
-                        var highLight = new Highlight();
-                        highLight.Row = bullet.Row;
-                        highLight.SPOPName = bullet.SPOPName;
-                        highLight.Columns2Highlight = highLightManualRequirement;
-                        cmrDifferentSPOP.Add(highLight);
+                        highLightManualRequirement.Add($"{splitItem}_{item.Row}_7");
                     }
+                }
+
+                if (highLightManualRequirement.Any())
+                {
+                    var highLight = new Highlight();
+                    highLight.Row = bullet.Row;
+                    highLight.SPOPName = bullet.SPOPName;
+                    highLight.Columns2Highlight = highLightManualRequirement;
+                    cmrDifferentSPOP.Add(highLight);
                 }
             }
 
@@ -622,7 +693,6 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
         {
             //open link and read the lines
 
-            //var spopLink = reader.GetDMC(bullet.NavigateToSPOPName);
             var spopLink = reader.GetDMC(spopName);
             if (string.IsNullOrEmpty(spopLink)) return new List<string>();
 
@@ -1050,7 +1120,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             return false;
         }
 
-        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints, 
+        private string HighlightChanges(List<Highlight> manualRequirements, List<Highlight> bulletPoints,
             Color color, string txtCleaningRecord, string txtOutputPath)
         {
             var sourceFile = new FileInfo(txtCleaningRecord);
@@ -1162,10 +1232,10 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
         }
 
 
-        private SPMReader GetReader(string oldRevisionLink, string newRevisionLink, List<string> lstSPOPs)
+        private SPMReader GetReader(string oldRevisionLink, string newRevisionLink, List<string> lstSPOPs, List<string> spopTitles)
         {
             var reader = new SPMReader();
-            reader.ReadSPM(oldRevisionLink, newRevisionLink, lstSPOPs);
+            reader.ReadSPM(oldRevisionLink, newRevisionLink, lstSPOPs, spopTitles);
             return reader;
         }
 
@@ -1593,7 +1663,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             // Check empty
             if (string.IsNullOrWhiteSpace(path))
             {
-                MessageBox.Show("Output folder path cannot be empty.");
+                MessageBox.Show("Please provide output Path.");
                 textBox.Focus();
                 return false;
             }
@@ -1632,8 +1702,6 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
         private void btnBrowseOutputPath_Click(object sender, EventArgs e)
         {
-            
-
             using (SaveFileDialog folderDialog = new SaveFileDialog())
             {
                 folderDialog.FileName = OUTPUT_FILENAME;
