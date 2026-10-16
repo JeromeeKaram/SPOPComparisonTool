@@ -13,11 +13,11 @@ namespace Cleaning_Records_Sheet
     {
         static int myCnt = 0;
         public static string m_sTempPath = "";
-        public static string m_sBinPath = "";
+        public static string m_sBinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
 
         public static string m_sToolName = "SPM Comparison and Cleaning Records Sheet Highlighting";
         public static string m_sVersion = "1.0";
-        public static string m_sDate = "13-May-26";
+        public static string m_sDate = "19-Oct-26";
 
         public static Dictionary<string, ColorInfo> m_dtColorCode = new Dictionary<string, ColorInfo>();
 

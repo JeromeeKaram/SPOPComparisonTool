@@ -1163,9 +1163,9 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             progressBar1.Visible = false;
 
 #if DEBUG
-            txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
-            txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
-            txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
+            //txtCleaningRecord.Text = "D:\\CleaningRecord\\PW1100G-JM_Cleaning_Record_in_Tsurugashima_Rev.19_2026.3.9.xlsx";
+            //txtOldRevisionLink.Text = "http://127.0.0.1:8000/PW1000G-77445-19453-00/";
+            //txtNewRevisionLink.Text = "http://127.0.0.1:8001/PW1000G-77445-19453-00/";
 #endif
 
             lblHeader.Text = Cleaning_Records_Sheet.Utility.m_sToolName + " V" + Cleaning_Records_Sheet.Utility.m_sVersion;

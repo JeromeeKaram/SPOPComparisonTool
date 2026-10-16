@@ -14,8 +14,8 @@ namespace Cleaning_Records_Sheet.About
     public partial class UIHelp : Form
     {
 
-        public const string pdf = "SVC_ComparisonTool.pdf";
-        public const string pptx = "SVC_ComparisonTool.pptx";
+        public const string pdf = "SPMComparison_CleaningRecordsHighlight.pdf";
+        public const string pptx = "SPMComparison_CleaningRecordsHighlight.pptx";
 
         public UIHelp()
         {
