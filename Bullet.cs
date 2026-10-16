@@ -10,7 +10,7 @@ namespace SPOPComparisonTool
     {
         public Bullet() { }
 
-        public string SPOPName { get; set; }
+        public string ExcelSPOPName { get; set; }
 
         public int Row { get; set; }
 
@@ -27,5 +27,7 @@ namespace SPOPComparisonTool
         public string SPSinManualRequirement { get; set; }
 
         public string ProcedureText { get; set; }
+
+        public string SPOPName { get; set; }
     }
 }

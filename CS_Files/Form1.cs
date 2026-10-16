@@ -184,15 +184,6 @@ namespace SPOPComparisonTool
                     //if (testWorkSheet.Name != "SPOP211 表") continue; //Comment this line to process all worksheets
 
                     var matchSpopName = Regex.Match(testWorkSheet.Name, @"SPOP\s*(\d+)", RegexOptions.IgnoreCase);
-                    var spopName = matchSpopName.Success ? $"SPOP {matchSpopName.Groups[1].Value}" : testWorkSheet.Name;
-
-                    var isDMCSame = reader.IsDMCSame(spopName);
-
-                    if (isDMCSame)
-                    {
-                        Debug.WriteLine($"No changes in {testWorkSheet.Name}");
-                        continue;
-                    }
 
                     int rowStartsAt = GetDataStartRow(testWorkSheet);
 
@@ -229,7 +220,8 @@ namespace SPOPComparisonTool
                             }
 
                             excelRecord.ManualRequirement = manualRequirements;
-                            excelRecord.SPOPName = testWorkSheet.Name;
+                            excelRecord.ExcelSPOPName = testWorkSheet.Name;
+                            excelRecord.SPOPName = Regex.Replace(testWorkSheet.Name, @"^(SPOP)\s*(\d+).*", "$1 $2");
                             excelRecord.Row = startRow;
                             excelRecord.ProcedureText = procedureText;
 
@@ -261,7 +253,9 @@ namespace SPOPComparisonTool
             var bullets = excelData.Where(ed => ed.ManualRequirement != null && ed.ManualRequirement.Any()).ToList();
 
             var outSPOPData = bullets.Where(b => b.IsNavigateToAnotherSPOP).ToList();
-            var inSPOPData = bullets.Where(b => !b.IsNavigateToAnotherSPOP).ToList();
+
+            //exclude bullets from inSPOPData if version has not changed
+            var inSPOPData = bullets.Where(b => !b.IsNavigateToAnotherSPOP && !reader.IsDMCSame(b.SPOPName)).ToList();
 
             (List<Highlight> cmrDifferentSPOP,
  Dictionary<string, List<string>> observationsList) dataDifferentSPOP =
@@ -349,7 +343,7 @@ namespace SPOPComparisonTool
             {
                 //if (bullet.BulletPoint != "1.D") continue;
 
-                var key = $"{bullet.SPOPName}_{bullet.BulletPoint}";
+                var key = $"{bullet.ExcelSPOPName}_{bullet.BulletPoint}";
 
                 if (!observationsList.ContainsKey(key))
                 {
@@ -365,9 +359,7 @@ namespace SPOPComparisonTool
                 }
                 else
                 {
-                    string withoutJapanese = bullet.SPOPName.Split(' ')[0];
-                    spaceBetweenSPOPandNumber = Regex.Replace(withoutJapanese, @"^(SPOP)(\d+)$", "$1 $2");
-                    bulletPoint = bullet.BulletPoint;
+                    bulletPoint = bullet.SPOPName;
                 }
 
                 var comparisonResult = GetComparisonResult(reader, spaceBetweenSPOPandNumber, bulletPoint);
@@ -386,7 +378,7 @@ namespace SPOPComparisonTool
                 {
                     var highLight = new Highlight();
                     highLight.Row = bullet.Row;
-                    highLight.SPOPName = bullet.SPOPName;
+                    highLight.SPOPName = bullet.ExcelSPOPName;
                     highLight.Columns2Highlight = new List<string> { $"{bullet.BulletPoint}_{bullet.Row}_2" };
                     changedBulletPoints.Add(highLight);
                 }
@@ -438,7 +430,7 @@ namespace SPOPComparisonTool
 
                     if (bullet.ProcedureText.ToLower().Contains("immersion"))
                     {
-                        var spopToRefer = string.IsNullOrEmpty(bullet.NavigateToSPOPName) ? bullet.SPOPName
+                        var spopToRefer = string.IsNullOrEmpty(bullet.NavigateToSPOPName) ? bullet.ExcelSPOPName
                             : bullet.NavigateToSPOPName;
 
                         var match = Regex.Match(spopToRefer, @"\bSPOP\s*(\d+)\b", RegexOptions.IgnoreCase);
@@ -548,7 +540,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
 
                             if (matched)
                             {
-                                if (observationsList.TryGetValue($"{bullet.SPOPName}_{bullet.BulletPoint}", out List<string> values))
+                                if (observationsList.TryGetValue($"{bullet.ExcelSPOPName}_{bullet.BulletPoint}", out List<string> values))
                                 {
                                     values.Add(item.Requirement);
                                 }
@@ -567,7 +559,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
                     {
                         var highLight = new Highlight();
                         highLight.Row = bullet.Row;
-                        highLight.SPOPName = bullet.SPOPName;
+                        highLight.SPOPName = bullet.ExcelSPOPName;
                         highLight.Columns2Highlight = highLightManualRequirement;
                         changedManualRequirements.Add(highLight);
                     }
@@ -600,7 +592,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
             {
                 //if (bullet.BulletPoint != "2.A.(2)") continue;
 
-                var key = $"{bullet.SPOPName}_{bullet.BulletPoint}";
+                var key = $"{bullet.ExcelSPOPName}_{bullet.BulletPoint}";
 
                 if (!observationsList.ContainsKey(key))
                 {
@@ -660,7 +652,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
 
                         if (matched)
                         {
-                            if (observationsList.TryGetValue($"{bullet.SPOPName}_{bullet.BulletPoint}", out List<string> values))
+                            if (observationsList.TryGetValue($"{bullet.ExcelSPOPName}_{bullet.BulletPoint}", out List<string> values))
                             {
                                 values.Add(item.Requirement);
                             }
@@ -679,7 +671,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
                 {
                     var highLight = new Highlight();
                     highLight.Row = bullet.Row;
-                    highLight.SPOPName = bullet.SPOPName;
+                    highLight.SPOPName = bullet.ExcelSPOPName;
                     highLight.Columns2Highlight = highLightManualRequirement;
                     cmrDifferentSPOP.Add(highLight);
                 }
