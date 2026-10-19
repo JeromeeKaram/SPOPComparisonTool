@@ -172,7 +172,7 @@ namespace SPOPComparisonTool
                     if (testWorkSheet == null)
                         continue;
 
-                    if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
+                    //if (testWorkSheet.Name != "SPOP15 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP18 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP19 表") continue; //Comment this line to process all worksheets
                     //if (testWorkSheet.Name != "SPOP203 表") continue; //Comment this line to process all worksheets
@@ -250,12 +250,12 @@ namespace SPOPComparisonTool
                 }
             }
 
-            var bullets = excelData.Where(ed => ed.ManualRequirement != null && ed.ManualRequirement.Any()).ToList();
+            //var bullets = excelData.Where(ed => ed.ManualRequirement != null && ed.ManualRequirement.Any()).ToList();
 
-            var outSPOPData = bullets.Where(b => b.IsNavigateToAnotherSPOP).ToList();
+            var outSPOPData = excelData.Where(b => b.IsNavigateToAnotherSPOP).ToList();
 
             //exclude bullets from inSPOPData if version has not changed
-            var inSPOPData = bullets.Where(b => !b.IsNavigateToAnotherSPOP && !reader.IsDMCSame(b.SPOPName)).ToList();
+            var inSPOPData = excelData.Where(b => !b.IsNavigateToAnotherSPOP && !reader.IsDMCSame(b.SPOPName)).ToList();
 
             (List<Highlight> cmrDifferentSPOP,
  Dictionary<string, List<string>> observationsList) dataDifferentSPOP =
@@ -341,7 +341,7 @@ namespace SPOPComparisonTool
 
             foreach (var bullet in bulletsWithoutDifferentSPOP)
             {
-                if (bullet.BulletPoint != "1.D") continue;
+                //if (bullet.BulletPoint != "1.B.(2)") continue;
 
                 var key = $"{bullet.SheetName}_{bullet.BulletPoint}";
 
@@ -364,12 +364,19 @@ namespace SPOPComparisonTool
                     bulletPoint = bullet.BulletPoint;
                 }
 
-                var comparisonResult = GetComparisonResult(reader, spopName, bulletPoint);
+                var comparisonResult = GetComparisonResult(reader, spopName, bulletPoint, 1);
 
                 if (comparisonResult == null)
                 {
                     continue;
                 }
+
+                //var completeComparisonResult = GetComparisonResult(reader, spopName, bulletPoint, 1);
+
+                //if (completeComparisonResult == null)
+                //{
+                //    continue;
+                //}
 
                 //data.Add((record.SPOPName, record.BulletPoint));
 
@@ -385,7 +392,7 @@ namespace SPOPComparisonTool
                     changedBulletPoints.Add(highLight);
                 }
 
-                if (comparisonResult.m_eCompareType != CompareType.SAME)
+                if (comparisonResult.m_new.m_sFullText != comparisonResult.m_old.m_sFullText || comparisonResult.m_new.m_sText != comparisonResult.m_old.m_sText)
                 {
                     var newVersionbulletText1 = comparisonResult.m_new.m_sText;
 
@@ -592,7 +599,7 @@ RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().C
 
             foreach (var bullet in bulletsWithDifferentSPOP)
             {
-                //if (bullet.BulletPoint != "2.A.(2)") continue;
+                //if (bullet.BulletPoint != "2.A.(1)(b)") continue;
 
                 var key = $"{bullet.SheetName}_{bullet.BulletPoint}";
 
@@ -928,8 +935,8 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
                     double.Parse(match.Groups["end"].Value),
                     websiteEndUnit);
 
-                if (Math.Abs(excelStart - websiteStart) <= 1 &&
-                    Math.Abs(excelEnd - websiteEnd) <= 1)
+                if (Math.Abs(excelStart - websiteStart) <= 0 &&
+                    Math.Abs(excelEnd - websiteEnd) <= 0)
                 {
                     return true;
                 }
@@ -1219,9 +1226,9 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             return result;
         }
 
-        private ComparisonResult GetComparisonResult(SPMReader reader, string spop, string bullet)
+        private ComparisonResult GetComparisonResult(SPMReader reader, string spop, string bullet, int stringComparisonType)
         {
-            var result = reader.GetStep(spop, bullet);
+            var result = reader.GetStep(spop, bullet, (StepComparionType)stringComparisonType);
             return result;
         }
 

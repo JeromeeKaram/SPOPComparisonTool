@@ -20,7 +20,7 @@ namespace Cleaning_Records_Sheet
         Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)> dtProcedures = new Dictionary<string, (EngineManualReader.ProcedureInfo, EngineManualReader.ProcedureInfo)>();
         Dictionary<string, string> dtDMC = new Dictionary<string, string>();
         Dictionary<string, List<ComparisonResult>> dtResults = new Dictionary<string, List<ComparisonResult>>();
-
+        Dictionary<string, List<ComparisonResult>> dtResultsAll = new Dictionary<string, List<ComparisonResult>>();
         public string GetDMC(string spop)
         {
             if (dtDMC.ContainsKey(spop))
@@ -30,13 +30,16 @@ namespace Cleaning_Records_Sheet
             return "";
         }
 
-        public ComparisonResult GetStep(string spop, string step)
+        public ComparisonResult GetStep(string spop, string step, StepComparionType etype)
         {
             try
             {
                 if (step.Length > 0)
                 {
                     string step1 = Regex.Replace(step, @"[().]", "");
+                    Dictionary<string, List<ComparisonResult>> dtResultsx = dtResults;
+                    if (etype == StepComparionType.Complete) dtResultsx = dtResultsAll;
+                    //Compare---
                     if (dtResults.ContainsKey(spop))
                     {
                         foreach (ComparisonResult v in dtResults[spop])
@@ -157,13 +160,17 @@ namespace Cleaning_Records_Sheet
                         url = sNewUrl + @"/" + dmc + ".html";
                         emReader = new EngineManualReader.EMReader();
                         EngineManualReader.ProcedureInfo oprocNew = DefineProcedure(emReader.Read(url, "new", oseleniumReader));
-
-
-                        //compare 
-                        ComparisonHelper comHelper = new ComparisonHelper();
-                        List<ComparisonResult> lstCompares = comHelper.Compare(oprocOld, oprocNew);
-                        dtResults.Add(spop, lstCompares);
                         dtProcedures.Add(spop, (oprocOld, oprocNew));
+
+                        //compare specific
+                        ComparisonHelper comHelper = new ComparisonHelper();
+                        List<ComparisonResult> lstCompares = comHelper.Compare(oprocOld, oprocNew, StepComparionType.Specific);
+                        dtResults.Add(spop, lstCompares);
+
+                        //Compare all
+                        comHelper = new ComparisonHelper();
+                        lstCompares = comHelper.Compare(oprocOld, oprocNew, StepComparionType.Complete);
+                        dtResultsAll.Add(spop, lstCompares);
                     }
                 }
             }

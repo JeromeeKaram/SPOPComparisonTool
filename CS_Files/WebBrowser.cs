@@ -460,6 +460,7 @@ namespace EngineManualReader
         {
             try
             {
+                return givenText;
                 if (givenText.Contains("<table") && givenText.Contains("</table>"))
                 {
                     string sx = "";
@@ -619,6 +620,13 @@ namespace EngineManualReader
         {
             m_sText = str;
         }
+
+        public string GetText(StepComparionType etype)
+        {
+            if (etype == StepComparionType.Specific) return m_sText;
+            else if (etype == StepComparionType.Complete) return m_sFullText;
+            return m_sText;
+        }
         public void AddNoteWarningCaution(string type, string noteTxt, int pos)
         {
             try
@@ -709,20 +717,20 @@ namespace EngineManualReader
 
     public class ComparisonHelper
     {
-        public List<ComparisonResult> Compare(ProcedureInfo oOldParent, ProcedureInfo onewParent)
+        public List<ComparisonResult> Compare(ProcedureInfo oOldParent, ProcedureInfo onewParent, StepComparionType etype)
         {
             List<ProcedureInfo> lstAllOld = new List<ProcedureInfo>();
             List<ProcedureInfo> lstAllNew = new List<ProcedureInfo>();
             Recursive(oOldParent, ref lstAllOld);
             Recursive(onewParent, ref lstAllNew);
-            return Compare(lstAllOld, lstAllNew);
+            return Compare(lstAllOld, lstAllNew, etype);
         }
-        public List<ComparisonResult> Compare(List<ProcedureInfo> lstOld, List<ProcedureInfo> lstNew)
+        public List<ComparisonResult> Compare(List<ProcedureInfo> lstOld, List<ProcedureInfo> lstNew, StepComparionType etype)
         {
             List<ComparisonResult> lstCompares = new List<ComparisonResult>();
             try
             {
-                var strCompareObj = new StringComparison1.StringComparison(Utility.m_sTempPath );
+                StringComparison1.StringComparison strCompareObj = new StringComparison1.StringComparison(Utility.m_sTempPath);
 
                 Dictionary<string, ProcedureInfo> dtOld = new Dictionary<string, ProcedureInfo>();
                 Dictionary<string, ProcedureInfo> dtNew = new Dictionary<string, ProcedureInfo>();
@@ -744,7 +752,7 @@ namespace EngineManualReader
                 {
                     for (int j = 0; j < lstNew.Count; j++)
                     {
-                        similarity[i, j] = strCompareObj.PercentageMatch(lstOld[i].m_sText, lstNew[j].m_sText, 0, true);
+                        similarity[i, j] = strCompareObj.PercentageMatch(lstOld[i].GetText(etype), lstNew[j].GetText(etype), 0, true);
                     }
                 }
                 //--
@@ -754,7 +762,7 @@ namespace EngineManualReader
                     if (lstAlignmentResult[i].Status == "Matched")
                     {
                         CompareType typep = CompareType.MODIFIED;
-                        if (Utility.IsMatch1(dtNew[lstAlignmentResult[i].NewSentence].m_sText, dtOld[lstAlignmentResult[i].OldSentence].m_sText)) typep = CompareType.SAME;
+                        if (Utility.IsMatch1(dtNew[lstAlignmentResult[i].NewSentence].GetText(etype), dtOld[lstAlignmentResult[i].OldSentence].GetText(etype))) typep = CompareType.SAME;
                         ComparisonResult oCmp = new ComparisonResult(dtNew[lstAlignmentResult[i].NewSentence], dtOld[lstAlignmentResult[i].OldSentence], typep);
                         lstCompares.Add(oCmp);
                     }
@@ -778,10 +786,15 @@ namespace EngineManualReader
         }
         private void Recursive(EngineManualReader.ProcedureInfo proc, ref List<ProcedureInfo> lstAll)
         {
-            if(proc.m_nIndex > 0) lstAll.Add(proc);
+            if (proc.m_nIndex > 0) lstAll.Add(proc);
             foreach (EngineManualReader.ProcedureInfo child in proc.m_lstChilds)
                 Recursive(child, ref lstAll);
         }
+    }
+    public enum StepComparionType
+    {
+        Specific = 0,
+        Complete = 1
     }
     public class ComparisonResult
     {
@@ -966,8 +979,8 @@ namespace EngineManualReader
                 }
 
                 //Tables reading
-               // oMainProcedure.m_lstProcTables = Utility.m_oSeleniumReader.ReadTables(linktype, htmlLink);
-              //  UpdateForMCMI(oMainProcedure, htmlLink);
+                // oMainProcedure.m_lstProcTables = Utility.m_oSeleniumReader.ReadTables(linktype, htmlLink);
+                //  UpdateForMCMI(oMainProcedure, htmlLink);
                 //----------------------------------------------------------------
                 //------------------ MAKE PARENT CHILD RELATION ------------------
                 for (int level = lastIndex; level >= 1; level--)
@@ -1205,7 +1218,7 @@ namespace EngineManualReader
                 }
 
                 //Read ICN
-               // oMainProcedure.m_lstICN = GetICNNumbers(htmlLink, outerHtml);
+                // oMainProcedure.m_lstICN = GetICNNumbers(htmlLink, outerHtml);
                 //create procedure outputs
                 List<string> lst = new List<string>();
                 foreach (ProcedureInfo oo in lstDuplicateProcedureObjs)
@@ -1232,7 +1245,7 @@ namespace EngineManualReader
             }
             finally
             {
-                
+
             }
             return oMainProcedure;
         }
