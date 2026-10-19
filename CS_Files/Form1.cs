@@ -277,7 +277,7 @@ namespace SPOPComparisonTool
 
             if (outSPOPData.Any())
             {
-                dataDifferentSPOP = ProcessOutSPOPBullets(outSPOPData, reader, txtNewRevisionLink);
+                dataDifferentSPOP = ProcessReferredSPOPBullets(outSPOPData, reader, txtNewRevisionLink);
             }
 
             if (inSPOPData.Any())
@@ -594,7 +594,7 @@ IsFractionalInchMetricRange(procedure, splitItem);
         }
 
         private (List<Highlight> cmrDifferentSPOP, Dictionary<string, List<string>> observationsList)
-            ProcessOutSPOPBullets(List<Bullet> bulletsWithDifferentSPOP, SPMReader reader, string newRevisionLink)
+            ProcessReferredSPOPBullets(List<Bullet> bulletsWithDifferentSPOP, SPMReader reader, string newRevisionLink)
         {
             var cmrDifferentSPOP = new List<Highlight>();
             var observationsList = new Dictionary<string, List<string>>();
