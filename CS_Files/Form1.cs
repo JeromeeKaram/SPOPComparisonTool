@@ -530,7 +530,9 @@ namespace SPOPComparisonTool
                         foreach (var procedure in linesFromProcedure)
                         {
                             matched = ManualRequirementExistsInNewRevision(procedure, variants) ||
-RangeEndpointsExistInSameSentence(procedure, splitItem) || procedure.ToLower().Contains(splitItem);
+RangeEndpointsExistInSameSentence(procedure, splitItem) || 
+procedure.ToLower().Contains(splitItem.ToLower()) || 
+IsFractionalInchMetricRange(procedure, splitItem);
 
                             if (!matched && splitItem.ToLowerInvariant().Contains("mpa"))
                             {
@@ -1470,6 +1472,27 @@ RangeEndpointsExistInSameSentence(procedure, splitItem);
             }
 
             return false;
+        }
+
+        private bool IsFractionalInchMetricRange(
+    string websiteText,
+    string manualRequirement)
+        {
+            var match = Regex.Match(
+                manualRequirement,
+                @"(\d+\/\d+)\s*inch.*?\((?<min>\d+(?:\.\d+)?)\s*[-−–]\s*(?<max>\d+(?:\.\d+)?)\s*mm\)",
+                RegexOptions.IgnoreCase);
+
+            if (!match.Success)
+                return false;
+
+            string min = match.Groups["min"].Value;
+            string max = match.Groups["max"].Value;
+
+            return Regex.IsMatch(
+                websiteText,
+                $@"\b(?:{Regex.Escape(min)}|{Regex.Escape(max)})\s*mm\b",
+                RegexOptions.IgnoreCase);
         }
 
         public static (List<string> acqCleanerSolnTemperatureList, List<string> soakTimeList, List<string> allInOne)
