@@ -1,15 +1,11 @@
 ﻿using OpenQA.Selenium;
 using OpenQA.Selenium.Chrome;
-using OpenQA.Selenium.Edge;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 
 namespace EngineManualReader
 {
@@ -1237,7 +1233,8 @@ namespace EngineManualReader
                         lst.Add("".PadLeft(5 * oo.m_nIndex, ' ') + "".PadLeft(20, '*'));
                     }
                 }
-                System.IO.File.WriteAllLines(Utility.m_sTempPath + System.IO.Path.GetFileNameWithoutExtension(htmlLink) + "_" + linktype + ".txt", lst.ToArray());
+                string m_sTempPath = Path.GetTempPath();
+                System.IO.File.WriteAllLines(m_sTempPath + System.IO.Path.GetFileNameWithoutExtension(htmlLink) + "_" + linktype + ".txt", lst.ToArray());
             }
             catch (Exception ee)
             {

@@ -1,23 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace Cleaning_Records_Sheet
 {
+    public enum RUN
+    {
+        IHI = 0,
+        CYIENT = 1
+    }
     class Utility
     {
+        public static RUN m_eRUN = RUN.IHI;
         static int myCnt = 0;
         public static string m_sTempPath = "";
         public static string m_sBinPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory);
 
         public static string m_sToolName = "SPM Comparison and Cleaning Records Sheet Highlighting";
         public static string m_sVersion = "1.0";
-        public static string m_sDate = "19-Oct-26";
+        public static string m_sDate = "22-Oct-26";
 
         public static Dictionary<string, ColorInfo> m_dtColorCode = new Dictionary<string, ColorInfo>();
 

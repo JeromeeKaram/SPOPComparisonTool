@@ -1,18 +1,9 @@
 ﻿using EngineManualReader;
-using HtmlAgilityPack;
 using OfficeOpenXml;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Information;
-using OfficeOpenXml.FormulaParsing.Excel.Functions.Math;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Xml;
-using static System.Net.WebRequestMethods;
 namespace Cleaning_Records_Sheet
 {
     class SPMReader
